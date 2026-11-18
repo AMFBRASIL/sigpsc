@@ -33,3 +33,4 @@ use the editor.
 - Share hour-record demo state through a root React context; do not persist it, so submissions and reviews stay coherent across screens without backend services.
 - Keep the participant experience in its own leaf route with a separate shell and fixed example identity; this is visual separation, not an authentication or permission boundary.
 - Reuse one hour form for staff and participants to keep duration calculation and confirmation consistent.
+- Preserve /index as a redirect to the canonical dashboard at / because existing preview navigation can use that address.
