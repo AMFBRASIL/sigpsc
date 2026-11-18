@@ -10,33 +10,180 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as DocumentosRouteImport } from './routes/documentos'
+import { Route as EscalasRouteImport } from './routes/escalas'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as NotificacoesRouteImport } from './routes/notificacoes'
+import { Route as RegistroRouteImport } from './routes/registro'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
+import { Route as ValidacaoRouteImport } from './routes/validacao'
+import { Route as PrestadoresIndexRouteImport } from './routes/prestadores.index'
+import { Route as PrestadoresIdRouteImport } from './routes/prestadores.$id'
+import { Route as PrestadoresNovoRouteImport } from './routes/prestadores.novo'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentosRoute = DocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EscalasRoute = EscalasRouteImport.update({
+  id: '/escalas',
+  path: '/escalas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificacoesRoute = NotificacoesRouteImport.update({
+  id: '/notificacoes',
+  path: '/notificacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegistroRoute = RegistroRouteImport.update({
+  id: '/registro',
+  path: '/registro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ValidacaoRoute = ValidacaoRouteImport.update({
+  id: '/validacao',
+  path: '/validacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrestadoresIndexRoute = PrestadoresIndexRouteImport.update({
+  id: '/prestadores/',
+  path: '/prestadores/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrestadoresIdRoute = PrestadoresIdRouteImport.update({
+  id: '/prestadores/$id',
+  path: '/prestadores/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrestadoresNovoRoute = PrestadoresNovoRouteImport.update({
+  id: '/prestadores/novo',
+  path: '/prestadores/novo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/documentos': typeof DocumentosRoute
+  '/escalas': typeof EscalasRoute
+  '/login': typeof LoginRoute
+  '/notificacoes': typeof NotificacoesRoute
+  '/registro': typeof RegistroRoute
+  '/relatorios': typeof RelatoriosRoute
+  '/validacao': typeof ValidacaoRoute
+  '/prestadores/$id': typeof PrestadoresIdRoute
+  '/prestadores/novo': typeof PrestadoresNovoRoute
+  '/prestadores/': typeof PrestadoresIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/documentos': typeof DocumentosRoute
+  '/escalas': typeof EscalasRoute
+  '/login': typeof LoginRoute
+  '/notificacoes': typeof NotificacoesRoute
+  '/registro': typeof RegistroRoute
+  '/relatorios': typeof RelatoriosRoute
+  '/validacao': typeof ValidacaoRoute
+  '/prestadores/$id': typeof PrestadoresIdRoute
+  '/prestadores/novo': typeof PrestadoresNovoRoute
+  '/prestadores': typeof PrestadoresIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/documentos': typeof DocumentosRoute
+  '/escalas': typeof EscalasRoute
+  '/login': typeof LoginRoute
+  '/notificacoes': typeof NotificacoesRoute
+  '/registro': typeof RegistroRoute
+  '/relatorios': typeof RelatoriosRoute
+  '/validacao': typeof ValidacaoRoute
+  '/prestadores/$id': typeof PrestadoresIdRoute
+  '/prestadores/novo': typeof PrestadoresNovoRoute
+  '/prestadores/': typeof PrestadoresIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/configuracoes'
+    | '/documentos'
+    | '/escalas'
+    | '/login'
+    | '/notificacoes'
+    | '/registro'
+    | '/relatorios'
+    | '/validacao'
+    | '/prestadores/$id'
+    | '/prestadores/novo'
+    | '/prestadores/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/configuracoes'
+    | '/documentos'
+    | '/escalas'
+    | '/login'
+    | '/notificacoes'
+    | '/registro'
+    | '/relatorios'
+    | '/validacao'
+    | '/prestadores/$id'
+    | '/prestadores/novo'
+    | '/prestadores'
+  id:
+    | '__root__'
+    | '/'
+    | '/configuracoes'
+    | '/documentos'
+    | '/escalas'
+    | '/login'
+    | '/notificacoes'
+    | '/registro'
+    | '/relatorios'
+    | '/validacao'
+    | '/prestadores/$id'
+    | '/prestadores/novo'
+    | '/prestadores/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
+  DocumentosRoute: typeof DocumentosRoute
+  EscalasRoute: typeof EscalasRoute
+  LoginRoute: typeof LoginRoute
+  NotificacoesRoute: typeof NotificacoesRoute
+  RegistroRoute: typeof RegistroRoute
+  RelatoriosRoute: typeof RelatoriosRoute
+  ValidacaoRoute: typeof ValidacaoRoute
+  PrestadoresIdRoute: typeof PrestadoresIdRoute
+  PrestadoresNovoRoute: typeof PrestadoresNovoRoute
+  PrestadoresIndexRoute: typeof PrestadoresIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +195,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documentos': {
+      id: '/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof DocumentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/escalas': {
+      id: '/escalas'
+      path: '/escalas'
+      fullPath: '/escalas'
+      preLoaderRoute: typeof EscalasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notificacoes': {
+      id: '/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/notificacoes'
+      preLoaderRoute: typeof NotificacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/registro': {
+      id: '/registro'
+      path: '/registro'
+      fullPath: '/registro'
+      preLoaderRoute: typeof RegistroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/validacao': {
+      id: '/validacao'
+      path: '/validacao'
+      fullPath: '/validacao'
+      preLoaderRoute: typeof ValidacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prestadores/': {
+      id: '/prestadores/'
+      path: '/prestadores'
+      fullPath: '/prestadores/'
+      preLoaderRoute: typeof PrestadoresIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prestadores/$id': {
+      id: '/prestadores/$id'
+      path: '/prestadores/$id'
+      fullPath: '/prestadores/$id'
+      preLoaderRoute: typeof PrestadoresIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prestadores/novo': {
+      id: '/prestadores/novo'
+      path: '/prestadores/novo'
+      fullPath: '/prestadores/novo'
+      preLoaderRoute: typeof PrestadoresNovoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
+  DocumentosRoute: DocumentosRoute,
+  EscalasRoute: EscalasRoute,
+  LoginRoute: LoginRoute,
+  NotificacoesRoute: NotificacoesRoute,
+  RegistroRoute: RegistroRoute,
+  RelatoriosRoute: RelatoriosRoute,
+  ValidacaoRoute: ValidacaoRoute,
+  PrestadoresIdRoute: PrestadoresIdRoute,
+  PrestadoresNovoRoute: PrestadoresNovoRoute,
+  PrestadoresIndexRoute: PrestadoresIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

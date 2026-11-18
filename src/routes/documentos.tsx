@@ -1,0 +1,31 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { FileText, Upload, Download, Eye, FilePlus } from "lucide-react";
+import { toast } from "sonner";
+import { PageHeader } from "@/components/sigpsc/page-header";
+import { StatusBadge } from "@/components/sigpsc/status-badge";
+import { Button } from "@/components/ui/button";
+import { documentos } from "@/lib/mock-data";
+import { meta } from "@/lib/meta";
+
+export const Route = createFileRoute("/documentos")({ head: () => meta("Documentos", "Relatórios, declarações e ofícios para o Poder Judiciário."), component: Docs });
+const modelos = ["Relatório de cumprimento", "Declaração de conclusão", "Comunicação de ausência", "Folha de frequência"];
+
+function Docs() {
+  return (
+    <div className="mx-auto max-w-6xl">
+      <PageHeader title="Documentos" subtitle="Gestão digital e emissão para o fórum" actions={<Button variant="outline"><Upload />Enviar arquivo</Button>} />
+      <h2 className="mb-3 font-display text-sm font-semibold">Emitir documento</h2>
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">{modelos.map((m) => (
+        <button key={m} onClick={() => toast.success(`${m} gerado (demonstração)`)} className="group rounded-xl border bg-card p-4 text-left shadow-card transition hover:border-primary">
+          <FilePlus className="mb-3 size-6 text-primary" /><p className="text-sm font-semibold">{m}</p><p className="text-xs text-muted-foreground">Gerar PDF</p></button>))}</div>
+      <h2 className="mb-3 font-display text-sm font-semibold">Recentes</h2>
+      <div className="divide-y rounded-xl border bg-card shadow-card">{documentos.map((d) => (
+        <div key={d.id} className="flex flex-wrap items-center gap-3 p-4">
+          <div className="grid size-10 place-items-center rounded-lg bg-info-soft text-info"><FileText className="size-5" /></div>
+          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{d.nome}</p><p className="text-xs text-muted-foreground">{d.tipo} · {d.data} · {d.tamanho}</p></div>
+          <StatusBadge status={d.status} />
+          <div className="flex gap-1"><Button variant="ghost" size="icon" aria-label="Visualizar"><Eye /></Button><Button variant="ghost" size="icon" aria-label="Baixar"><Download /></Button></div>
+        </div>))}</div>
+    </div>
+  );
+}
