@@ -164,9 +164,76 @@
   -webkit-appearance: none;
 }
 .hour-registration-dialog > button:last-child {
-  color: var(--primary-foreground);
-  background: var(--registration-shade);
+  color: var(--muted-foreground);
+  background: var(--muted);
   padding: 0.5rem;
+  border-radius: var(--radius-md);
+}
+.wizard-dialog-layout {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  height: 100%;
+}
+.wizard-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--background);
+}
+.wizard-progress {
+  display: block;
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-sm);
+  appearance: none;
+  background: var(--border);
+  color: var(--primary);
+}
+.wizard-progress::-webkit-progress-bar { background: var(--border); }
+.wizard-progress::-webkit-progress-value { background: var(--primary); transition: width 200ms ease; }
+.wizard-progress::-moz-progress-bar { background: var(--primary); }
+.wizard-step-list {
+  gap: 12px;
+  padding: 24px 16px;
+}
+.wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 12px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+}
+.wizard-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--card);
+}
+.wizard-fields {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 36px 40px 28px;
+}
+.wizard-footer {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 20px 40px;
+  background: var(--card);
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .wizard-dialog-layout { grid-template-columns: 240px minmax(0, 1fr); }
+  .wizard-fields { padding: 32px 24px 24px; }
+  .wizard-footer { padding: 16px 24px; }
+  .wizard-step-list { padding: 20px 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .hour-registration-dialog {

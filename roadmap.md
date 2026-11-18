@@ -11,3 +11,7 @@
 - [x] Página no celular e janela ampla no computador a partir do dashboard
 - [x] Formulário em etapas com campos grandes e cartões de seleção
 - [x] Verificar envio e apresentação nos dois tamanhos
+
+# Janela de horas com progresso lateral
+- [x] Redesenhar a janela com etapas à esquerda, resumo e ações fixas
+- [x] Verificar as etapas e o envio no computador, preservando a página no celular

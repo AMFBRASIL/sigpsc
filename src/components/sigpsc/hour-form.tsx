@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -31,10 +31,12 @@ export function HourForm({
   personal = false,
   correction,
   onDone,
+  sidebarHeader,
 }: {
   personal?: boolean;
   correction?: HourRecord | undefined;
   onDone?: () => void;
+  sidebarHeader?: ReactNode;
 }) {
   const { addRecord } = useDemo();
   const [step, setStep] = useState(0);
@@ -62,7 +64,11 @@ export function HourForm({
       const title = heading.current;
       title?.focus({ preventScroll: true });
       const dialog = title?.closest('[role="dialog"]');
-      if (dialog) dialog.scrollTop = 0;
+       if (dialog) {
+         const fields = title?.closest(".wizard-fields");
+         if (fields) fields.scrollTop = 0;
+         else dialog.scrollTop = 0;
+       }
       else title?.scrollIntoView({ block: "center", behavior: "instant" });
     });
   }
@@ -123,29 +129,62 @@ export function HourForm({
       </div>
     );
   return (
-    <form onSubmit={submit} className="hour-wizard space-y-6">
-      <ol aria-label="Etapas do registro" className="grid grid-cols-3 gap-2 sm:gap-4">
+    <form onSubmit={submit} className={cn("hour-wizard", sidebarHeader ? "wizard-dialog-layout" : "space-y-6")}>
+      <div className={sidebarHeader ? "wizard-sidebar" : undefined}>
+      {sidebarHeader}
+      {sidebarHeader && (
+        <div className="px-7 pt-6">
+          <div className="mb-3 flex items-center justify-between text-xs font-medium text-muted-foreground">
+            <span>PROGRESSO DO REGISTRO</span>
+            <span className="text-primary">{step + 1} / 3</span>
+          </div>
+          <progress aria-label="Progresso do registro" max={3} value={step + 1} className="wizard-progress" />
+        </div>
+      )}
+      <ol aria-label="Etapas do registro" className={cn("grid", sidebarHeader ? "wizard-step-list" : "grid-cols-3 gap-2 sm:gap-4")}>
         {steps.map((label, index) => (
           <li
             key={label}
             aria-current={step === index ? "step" : undefined}
             className={cn(
-              "flex min-w-0 flex-col gap-2 border-t-2 pt-3 text-xs sm:flex-row sm:items-center sm:text-sm",
+              sidebarHeader ? "wizard-step" : "flex min-w-0 flex-col gap-2 border-t-2 pt-3 text-xs sm:flex-row sm:items-center sm:text-sm",
               index <= step ? "border-primary text-primary" : "border-border text-muted-foreground",
+              sidebarHeader && step === index && "bg-card shadow-card",
             )}
           >
-            <span
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={index > step}
+              aria-label={`Etapa ${index + 1}: ${label}`}
+              onClick={() => index < step && go(index)}
               className={cn(
-                "grid size-7 shrink-0 place-items-center rounded-full font-semibold",
-                index <= step ? "bg-primary text-primary-foreground" : "bg-muted",
+                "grid size-7 shrink-0 place-items-center rounded-full font-semibold disabled:opacity-100",
+                sidebarHeader && "size-10 rounded-lg",
+                index < step ? "bg-success-soft text-success hover:bg-success-soft" : index === step ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground" : "bg-muted text-muted-foreground",
               )}
             >
               {index < step ? <Check className="size-4" /> : `0${index + 1}`}
+            </Button>
+            <span className="min-w-0">
+              <span className="block font-medium">{label}</span>
+              {sidebarHeader && <span className="mt-1 block text-xs font-normal text-muted-foreground">{["Prestador e período", "Descrição e comprovante", "Revisão e envio"][index]}</span>}
             </span>
-            <span className="font-medium">{label}</span>
           </li>
         ))}
       </ol>
+      {sidebarHeader && (
+        <div className="mt-auto border-t px-7 py-6">
+          <p className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground"><Clock className="size-4" /> RESUMO DO REGISTRO</p>
+          <p className="text-sm font-semibold">{person?.nome}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{date.split("-").reverse().join("/")} · {entry} – {exit}</p>
+          <div className="mt-4 flex items-center justify-between text-sm"><span className="text-muted-foreground">Horas calculadas</span><strong className="text-lg text-success">{minutes ? duration : "—"}</strong></div>
+        </div>
+      )}
+      </div>
+      <div className={sidebarHeader ? "wizard-main" : "space-y-6"}>
+      <div className={cn("space-y-6", sidebarHeader && "wizard-fields")}>
       <div>
         <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
           Etapa {step + 1} de 3
@@ -429,14 +468,15 @@ export function HourForm({
           {error}
         </p>
       )}
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 border-t pt-5 sm:flex sm:justify-between">
+      </div>
+      <div className={cn("grid grid-cols-[auto_minmax(0,1fr)] gap-3 border-t pt-5 sm:flex sm:justify-between", sidebarHeader && "wizard-footer")}>
         {step > 0 ? (
           <Button type="button" variant="outline" className="h-12" onClick={() => go(step - 1)}>
             <ArrowLeft />
             Voltar
           </Button>
         ) : (
-          <span />
+          <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><Clock className="size-4" />{sidebarHeader ? "Registro de frequência" : ""}</span>
         )}
         <Button type="submit" className="h-12 text-base sm:min-w-56">
           {step === 2 ? (
@@ -451,6 +491,7 @@ export function HourForm({
             </>
           )}
         </Button>
+      </div>
       </div>
     </form>
   );
