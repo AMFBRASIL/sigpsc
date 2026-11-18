@@ -58,7 +58,13 @@ export function HourForm({
   function go(next: number) {
     setStep(next);
     setError("");
-    requestAnimationFrame(() => heading.current?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => {
+      const title = heading.current;
+      title?.focus({ preventScroll: true });
+      const dialog = title?.closest('[role="dialog"]');
+      if (dialog) dialog.scrollTop = 0;
+      else title?.scrollIntoView({ block: "center", behavior: "instant" });
+    });
   }
   function submit(e: FormEvent) {
     e.preventDefault();
