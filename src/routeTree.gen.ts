@@ -11,9 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as DiaRouteImport } from './routes/dia'
 import { Route as DocumentosRouteImport } from './routes/documentos'
 import { Route as EscalasRouteImport } from './routes/escalas'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MinhaPrestacaoRouteImport } from './routes/minha-prestacao'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as RegistroRouteImport } from './routes/registro'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
@@ -32,6 +34,11 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DiaRoute = DiaRouteImport.update({
+  id: '/dia',
+  path: '/dia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocumentosRoute = DocumentosRouteImport.update({
   id: '/documentos',
   path: '/documentos',
@@ -45,6 +52,11 @@ const EscalasRoute = EscalasRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MinhaPrestacaoRoute = MinhaPrestacaoRouteImport.update({
+  id: '/minha-prestacao',
+  path: '/minha-prestacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificacoesRoute = NotificacoesRouteImport.update({
@@ -86,9 +98,11 @@ const PrestadoresNovoRoute = PrestadoresNovoRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/dia': typeof DiaRoute
   '/documentos': typeof DocumentosRoute
   '/escalas': typeof EscalasRoute
   '/login': typeof LoginRoute
+  '/minha-prestacao': typeof MinhaPrestacaoRoute
   '/notificacoes': typeof NotificacoesRoute
   '/registro': typeof RegistroRoute
   '/relatorios': typeof RelatoriosRoute
@@ -100,9 +114,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/dia': typeof DiaRoute
   '/documentos': typeof DocumentosRoute
   '/escalas': typeof EscalasRoute
   '/login': typeof LoginRoute
+  '/minha-prestacao': typeof MinhaPrestacaoRoute
   '/notificacoes': typeof NotificacoesRoute
   '/registro': typeof RegistroRoute
   '/relatorios': typeof RelatoriosRoute
@@ -115,9 +131,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/dia': typeof DiaRoute
   '/documentos': typeof DocumentosRoute
   '/escalas': typeof EscalasRoute
   '/login': typeof LoginRoute
+  '/minha-prestacao': typeof MinhaPrestacaoRoute
   '/notificacoes': typeof NotificacoesRoute
   '/registro': typeof RegistroRoute
   '/relatorios': typeof RelatoriosRoute
@@ -131,9 +149,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/configuracoes'
+    | '/dia'
     | '/documentos'
     | '/escalas'
     | '/login'
+    | '/minha-prestacao'
     | '/notificacoes'
     | '/registro'
     | '/relatorios'
@@ -145,9 +165,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/configuracoes'
+    | '/dia'
     | '/documentos'
     | '/escalas'
     | '/login'
+    | '/minha-prestacao'
     | '/notificacoes'
     | '/registro'
     | '/relatorios'
@@ -159,9 +181,11 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/configuracoes'
+    | '/dia'
     | '/documentos'
     | '/escalas'
     | '/login'
+    | '/minha-prestacao'
     | '/notificacoes'
     | '/registro'
     | '/relatorios'
@@ -174,9 +198,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  DiaRoute: typeof DiaRoute
   DocumentosRoute: typeof DocumentosRoute
   EscalasRoute: typeof EscalasRoute
   LoginRoute: typeof LoginRoute
+  MinhaPrestacaoRoute: typeof MinhaPrestacaoRoute
   NotificacoesRoute: typeof NotificacoesRoute
   RegistroRoute: typeof RegistroRoute
   RelatoriosRoute: typeof RelatoriosRoute
@@ -202,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dia': {
+      id: '/dia'
+      path: '/dia'
+      fullPath: '/dia'
+      preLoaderRoute: typeof DiaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/documentos': {
       id: '/documentos'
       path: '/documentos'
@@ -221,6 +254,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/minha-prestacao': {
+      id: '/minha-prestacao'
+      path: '/minha-prestacao'
+      fullPath: '/minha-prestacao'
+      preLoaderRoute: typeof MinhaPrestacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notificacoes': {
@@ -278,9 +318,11 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  DiaRoute: DiaRoute,
   DocumentosRoute: DocumentosRoute,
   EscalasRoute: EscalasRoute,
   LoginRoute: LoginRoute,
+  MinhaPrestacaoRoute: MinhaPrestacaoRoute,
   NotificacoesRoute: NotificacoesRoute,
   RegistroRoute: RegistroRoute,
   RelatoriosRoute: RelatoriosRoute,

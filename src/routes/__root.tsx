@@ -11,6 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { AppShell } from "@/components/sigpsc/app-shell";
+import { DemoProvider } from "@/lib/daily-demo";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
@@ -131,7 +132,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      {isLogin ? <Outlet /> : <AppShell><Outlet /></AppShell>}
+      <DemoProvider>{isLogin ? <Outlet /> : <AppShell><Outlet /></AppShell>}</DemoProvider>
       <Toaster richColors position="top-center" />
     </QueryClientProvider>
   );

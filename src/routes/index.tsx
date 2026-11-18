@@ -28,7 +28,7 @@ function Dashboard() {
   return (
     <div className="mx-auto max-w-7xl">
       <PageHeader title="Bom dia, Ana" subtitle="Quarta-feira, 18 de novembro de 2026 · Unidade Central"
-        actions={<><Button variant="outline" asChild><Link to="/relatorios">Relatórios</Link></Button><Button asChild><Link to="/registro"><Plus />Registrar horas</Link></Button></>} />
+        actions={<><Button variant="outline" asChild><Link to="/dia">Lista do dia</Link></Button><Button variant="outline" asChild><Link to="/minha-prestacao">Área do prestador</Link></Button><Button asChild><Link to="/registro"><Plus />Registrar horas</Link></Button></>} />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
         {kpis.map((k) => (

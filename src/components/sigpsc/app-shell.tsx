@@ -1,10 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { LayoutDashboard, Users, Clock, CheckCheck, CalendarDays, FileText, BarChart3, Bell, Settings, ChevronsLeft, Scale, LogOut, Menu, Search, X } from "lucide-react";
+import { ListTodo, UserRound, LayoutDashboard, Users, Clock, CheckCheck, CalendarDays, FileText, BarChart3, Bell, Settings, ChevronsLeft, Scale, LogOut, Menu, Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dia", label: "Lista do dia", icon: ListTodo },
+  { to: "/minha-prestacao", label: "Área do prestador", icon: UserRound },
   { to: "/prestadores", label: "Prestadores", icon: Users },
   { to: "/registro", label: "Registrar horas", icon: Clock },
   { to: "/validacao", label: "Validação", icon: CheckCheck },
@@ -14,7 +17,7 @@ const nav = [
   { to: "/notificacoes", label: "Notificações", icon: Bell },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
-const mobileNav = [nav[0], nav[1], nav[2], nav[3]];
+const mobileNav = [nav[0], nav[1], nav[3], nav[5]];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -41,6 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     </nav>
   );
 
+  if (path === "/minha-prestacao") return <div className="min-h-screen bg-background"><header className="border-b bg-card"><div className="mx-auto flex min-h-16 max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3"><Link to="/minha-prestacao" className="flex items-center gap-2 font-display font-bold"><Scale className="size-6 text-primary" />SIGPSC <span className="text-xs font-normal text-muted-foreground">Minha prestação</span></Link><Button variant="outline" size="sm" asChild><Link to="/">Visão da equipe</Link></Button></div></header><main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">{children}</main></div>;
   return (
     <div className="flex min-h-screen w-full bg-background">
       <aside className={cn("sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-3 transition-all duration-300 lg:flex", collapsed ? "w-[72px]" : "w-64")}>

@@ -1,10 +1,11 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, FileText, Phone, Scale, MapPin, User, Calendar, Pencil, FileDown } from "lucide-react";
+import { recordsFor, useDemo, personalDocuments } from "@/lib/daily-demo";
 import { Panel } from "@/components/sigpsc/page-header";
 import { StatusBadge } from "@/components/sigpsc/status-badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { documentos, prestadores, registrosPendentes } from "@/lib/mock-data";
+import { documentos, prestadores } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/prestadores/$id")({
   loader: ({ params }) => { const p = prestadores.find((x) => x.id === params.id); if (!p) throw notFound(); return p; },
@@ -18,6 +19,14 @@ function Info({ icon: Icon, label, value }: { icon: typeof User; label: string; 
 
 function Perfil() {
   const p = Route.useLoaderData();
+  const { records } = useDemo();
+  const own = recordsFor(records, p.id);
+  const history = [
+    ...own.map((r) => ({id: r.id, date: r.data, title: r.atividade, detail: `${r.entrada}–${r.saida} · ${r.horas}h · ${r.status}${r.motivo ? ` · ${r.motivo}` : ""}`, type: "Horas"})),
+    {id: "communication", date: "12/11/2026", title: "Contato com o prestador", detail: `Comparecimento confirmado por ${p.supervisor}.`, type: "Comunicação"},
+    {id: "absence", date: "09/11/2026", title: "Ausência registrada", detail: "Justificativa recebida e encaminhada à coordenação.", type: "Ausência"},
+    {id: "document", date: "01/11/2026", title: "Folha de frequência anexada", detail: "Documento recebido pela coordenação.", type: "Documento"},
+  ].sort((a, b) => b.date.split("/").reverse().join("").localeCompare(a.date.split("/").reverse().join("")));
   const pct = Math.round((p.horasCumpridas / p.horasTotais) * 100);
   const restante = p.horasTotais - p.horasCumpridas;
   const iniciais = p.nome.split(" ").map((n) => n[0]).slice(0, 2).join("");
@@ -42,18 +51,18 @@ function Perfil() {
         <div className="h-3 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-brand" style={{ width: `${pct}%` }} /></div>
       </div>
 
-      <Tabs defaultValue="dados" className="mt-4">
-        <TabsList className="w-full justify-start overflow-x-auto sm:w-auto"><TabsTrigger value="dados">Dados</TabsTrigger><TabsTrigger value="horas">Histórico de horas</TabsTrigger><TabsTrigger value="docs">Documentos</TabsTrigger></TabsList>
+      <Tabs defaultValue="historico" className="mt-4">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:w-auto sm:grid-cols-4"><TabsTrigger value="historico">Histórico completo</TabsTrigger><TabsTrigger value="dados">Dados</TabsTrigger><TabsTrigger value="horas">Histórico de horas</TabsTrigger><TabsTrigger value="docs">Documentos</TabsTrigger></TabsList>
+        <TabsContent value="historico" className="mt-4"><ol className="border-l-2 border-primary/20 pl-5">{history.map((event) => <li key={event.id} className="relative border-b py-4"><span className="absolute -left-[27px] top-5 size-3 rounded-full border-2 border-background bg-primary" /><p className="text-xs font-semibold text-primary">{event.date} · {event.type}</p><p className="mt-1 text-sm font-semibold">{event.title}</p><p className="text-sm text-muted-foreground">{event.detail}</p></li>)}</ol></TabsContent>
         <TabsContent value="dados" className="mt-4 grid gap-4 md:grid-cols-2">
           <Panel title="Dados pessoais"><div className="grid gap-4 sm:grid-cols-2"><Info icon={User} label="CPF" value={p.cpf} /><Info icon={Phone} label="Telefone" value={p.telefone} /><Info icon={Calendar} label="Último registro" value={p.ultimoRegistro} /><Info icon={MapPin} label="Local de prestação" value={p.local} /></div></Panel>
           <Panel title="Dados judiciais"><div className="grid gap-4 sm:grid-cols-2"><Info icon={Scale} label="Vara" value={p.vara} /><Info icon={MapPin} label="Comarca" value={p.comarca} /><Info icon={Calendar} label="Início autorizado" value={p.inicio} /><Info icon={Calendar} label="Prazo judicial" value={p.prazo} /><Info icon={User} label="Supervisor" value={p.supervisor} /><Info icon={FileText} label="Limite semanal" value="12h por semana" /></div></Panel>
         </TabsContent>
         <TabsContent value="horas" className="mt-4"><Panel>
-          <ul className="divide-y">{[...registrosPendentes, ...registrosPendentes].slice(0, 6).map((r, i) => (
-            <li key={i} className="flex flex-wrap items-center gap-3 py-3"><div className="min-w-0 flex-1"><p className="text-sm font-medium">{r.atividade}</p><p className="text-xs text-muted-foreground">{r.data} · {r.entrada}–{r.saida} · {r.local}</p></div><span className="font-semibold">{r.horas}h</span><StatusBadge status={i < 1 ? "Pendente" : "Concluído"} /></li>))}</ul>
+          <ul className="divide-y">{own.map((r) => <li key={r.id} className="flex flex-wrap items-center gap-3 py-3"><div className="min-w-0 flex-1"><p className="text-sm font-medium">{r.atividade}</p><p className="text-xs text-muted-foreground">{r.data} · {r.entrada}–{r.saida} · {r.local}</p>{r.motivo && <p className="mt-1 text-xs text-danger">{r.motivo}</p>}</div><span className="font-semibold">{r.horas}h</span><span className="text-xs font-medium">{r.status}</span></li>)}</ul>{!own.length && <p className="text-sm text-muted-foreground">Nenhum registro de horas.</p>}
         </Panel></TabsContent>
         <TabsContent value="docs" className="mt-4"><Panel>
-          <ul className="divide-y">{documentos.slice(0, 4).map((d) => (<li key={d.id} className="flex items-center gap-3 py-3"><FileText className="size-5 text-primary" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{d.nome}</p><p className="text-xs text-muted-foreground">{d.tipo} · {d.data}</p></div><StatusBadge status={d.status} /></li>))}</ul>
+          <ul className="divide-y">{(p.id === "1" ? personalDocuments.map((d) => ({id: d.id, nome: d.name, tipo: "Documento", data: d.date, status: d.status})) : documentos.filter((d) => d.nome.includes(p.nome.split(" ")[0] ?? ""))).map((d) => (<li key={d.id} className="flex items-center gap-3 py-3"><FileText className="size-5 text-primary" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{d.nome}</p><p className="text-xs text-muted-foreground">{d.tipo} · {d.data}</p></div><StatusBadge status={d.status} /></li>))}</ul>
         </Panel></TabsContent>
       </Tabs>
     </div>

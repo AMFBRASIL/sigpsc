@@ -28,3 +28,8 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Frontend demo architecture
+- Share hour-record demo state through a root React context; do not persist it, so submissions and reviews stay coherent across screens without backend services.
+- Keep the participant experience in its own leaf route with a separate shell and fixed example identity; this is visual separation, not an authentication or permission boundary.
+- Reuse one hour form for staff and participants to keep duration calculation and confirmation consistent.
