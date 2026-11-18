@@ -62,11 +62,16 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-success: var(--success); --color-success-soft: var(--success-soft);
-  --color-warning: var(--warning); --color-warning-soft: var(--warning-soft);
-  --color-danger: var(--danger); --color-danger-soft: var(--danger-soft);
-  --color-info: var(--info); --color-info-soft: var(--info-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
   --color-overlay: var(--overlay);
+  --color-registration-shade: var(--registration-shade);
   --color-primary-glow: var(--primary-glow);
   --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
@@ -104,11 +109,16 @@
   --border: oklch(0.91 0.012 252);
   --input: oklch(0.91 0.012 252);
   --ring: oklch(0.6 0.15 255);
-  --success: oklch(0.56 0.14 155); --success-soft: oklch(0.95 0.05 155);
-  --warning: oklch(0.6 0.14 70); --warning-soft: oklch(0.96 0.06 85);
-  --danger: oklch(0.56 0.2 25); --danger-soft: oklch(0.95 0.035 25);
-  --info: oklch(0.48 0.16 258); --info-soft: oklch(0.94 0.04 255);
+  --success: oklch(0.56 0.14 155);
+  --success-soft: oklch(0.95 0.05 155);
+  --warning: oklch(0.6 0.14 70);
+  --warning-soft: oklch(0.96 0.06 85);
+  --danger: oklch(0.56 0.2 25);
+  --danger-soft: oklch(0.95 0.035 25);
+  --info: oklch(0.48 0.16 258);
+  --info-soft: oklch(0.94 0.04 255);
   --overlay: oklch(0.15 0.04 262 / 55%);
+  --registration-shade: oklch(0.17 0.035 258 / 78%);
   --chart-1: oklch(0.42 0.16 260);
   --chart-2: oklch(0.62 0.15 240);
   --chart-3: oklch(0.56 0.14 155);
@@ -141,5 +151,26 @@
   }
 }
 
-@utility bg-gradient-brand { background-image: var(--gradient-brand); }
-@utility bg-gradient-hero { background-image: var(--gradient-hero); }
+@utility bg-gradient-brand {
+  background-image: var(--gradient-brand);
+}
+@utility bg-gradient-hero {
+  background-image: var(--gradient-hero);
+}
+
+.hour-wizard input[type="date"],
+.hour-wizard input[type="time"] {
+  max-width: 100%;
+  -webkit-appearance: none;
+}
+.hour-registration-dialog > button:last-child {
+  color: var(--primary-foreground);
+  background: var(--registration-shade);
+  padding: 0.5rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hour-registration-dialog {
+    animation: none;
+    transition: none;
+  }
+}

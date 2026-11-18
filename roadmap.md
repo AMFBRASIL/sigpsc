@@ -6,3 +6,8 @@
 - [x] Área do prestador com saldo, agenda e documentos
 - [x] Registro simplificado com confirmação e pendências
 - [x] Verificar fluxos e telas no computador e celular
+
+# Registro de horas adaptado
+- [x] Página no celular e janela ampla no computador a partir do dashboard
+- [x] Formulário em etapas com campos grandes e cartões de seleção
+- [x] Verificar envio e apresentação nos dois tamanhos
