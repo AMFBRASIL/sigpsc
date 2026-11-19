@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Check, Sparkles, CalendarDays, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Sparkles, ChevronRight, type LucideIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,16 +9,17 @@ export const avatarColors = ["bg-chart-1", "bg-danger", "bg-success", "bg-chart-
 
 const today = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
 
-export function WizardDialog({ open, onOpenChange, badge, headline, steps, step, setStep, canContinue = true, onFinish, finishLabel = "Cadastrar", children }: {
+export function WizardDialog({ open, onOpenChange, badge, headline, steps, step, setStep, canContinue = true, onFinish, finishLabel = "Cadastrar", image = "/images/hour-registration-library.jpg", children }: {
   open: boolean; onOpenChange: (o: boolean) => void; badge: string; headline: string; steps: WizardStep[]; step: number; setStep: (n: number) => void;
-  canContinue?: boolean | undefined; onFinish: () => void; finishLabel?: string; children: ReactNode;
+  canContinue?: boolean | undefined; onFinish: () => void; finishLabel?: string; image?: string; children: ReactNode;
 }) {
   const last = step === steps.length - 1;
   const current = steps[step]!;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="hour-registration-dialog flex h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-[min(820px,92dvh)] sm:w-[calc(100%-3rem)] sm:max-w-6xl sm:rounded-2xl md:grid md:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="flex shrink-0 flex-col bg-gradient-hero px-5 py-5 text-sidebar-foreground md:px-7 md:py-7">
+        <aside className="relative isolate flex shrink-0 flex-col overflow-hidden bg-gradient-hero px-5 py-5 text-sidebar-foreground md:px-7 md:py-7">
+          {image && <img src={image} alt="" aria-hidden className="pointer-events-none absolute inset-0 -z-10 size-full object-cover opacity-15 mix-blend-luminosity" />}
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-sidebar-border bg-sidebar-accent px-3 py-1 text-xs font-semibold"><Sparkles className="size-3.5" />{badge}</span>
           <p className="mt-4 font-display text-xl font-bold leading-tight md:mt-6 md:text-3xl">{headline}</p>
           <p className="mt-2 hidden text-sm capitalize text-sidebar-foreground/70 md:block">{today}</p>
@@ -26,22 +27,23 @@ export function WizardDialog({ open, onOpenChange, badge, headline, steps, step,
             {steps.map((s, i) => (
               <li key={s.title}>
                 <button type="button" disabled={i > step} onClick={() => setStep(i)} className={cn("flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-left transition-colors", i === step && "border-sidebar-border bg-sidebar-accent", i < step && "hover:bg-sidebar-accent/60")}>
-                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg border border-sidebar-border", i === step ? "bg-sidebar-foreground text-sidebar" : i < step ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground/70")}>
+                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg border border-sidebar-border", i === step ? "bg-sidebar-foreground text-sidebar" : i < step ? "border-transparent bg-success text-primary-foreground" : "text-sidebar-foreground/70")}>
                     {i < step ? <Check className="size-4" /> : <s.icon className="size-4" />}
                   </span>
-                  <span className="min-w-0"><span className="block text-sm font-semibold">{s.title}</span><span className="block truncate text-xs text-sidebar-foreground/60">{s.hint}</span></span>
+                  <span className="min-w-0"><span className="flex items-center gap-1 text-sm font-semibold">{s.title}{i === step && <ChevronRight className="size-3.5" />}</span><span className="block truncate text-xs text-sidebar-foreground/60">{s.hint}</span></span>
                 </button>
               </li>
             ))}
           </ol>
           <div className="mt-4 md:mt-6">
-            <p className="mb-2 text-xs text-sidebar-foreground/70">Passo {step + 1} de {steps.length} · <span className="md:hidden">{current.title}</span></p>
+            <p className="mb-2 flex justify-between text-xs text-sidebar-foreground/70"><span>Progresso <span className="md:hidden">· {current.title}</span></span><span className="font-semibold">{Math.round(((step + 1) / steps.length) * 100)}%</span></p>
             <div className="h-1.5 overflow-hidden rounded-full bg-sidebar-accent"><div className="h-full rounded-full bg-sidebar-foreground transition-all" style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
+            <p className="mt-2 text-xs text-sidebar-foreground/60">Passo {step + 1} de {steps.length}</p>
           </div>
         </aside>
         <section className="flex min-h-0 flex-1 flex-col bg-background">
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-10 sm:py-8">
-            <p className="mb-5 hidden items-center gap-2 text-sm capitalize text-muted-foreground md:flex"><CalendarDays className="size-4" />{today}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Etapa {step + 1} de {steps.length}</p>
             <DialogTitle className="font-display text-2xl font-bold">{current.title}</DialogTitle>
             <DialogDescription className="mt-1">{current.hint}</DialogDescription>
             <div className="mt-6 space-y-5">{children}</div>
