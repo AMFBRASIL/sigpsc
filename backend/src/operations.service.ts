@@ -492,10 +492,44 @@ export class OperationsService {
   }
 
   async setUserActive(actor: Actor, id: number, ativo: boolean) {
-    if (id === actor.id && !ativo) throw new AppError(400, "Você não pode desativar a própria conta.", "USUARIO");
-    await this.prisma.usuarios.update({ where: { id }, data: { ativo } });
-    await audit(this.prisma, { usuarioId: actor.id, acao: "USUARIO_STATUS", entidade: "usuarios", entidadeId: id, depois: { ativo }, ip: actor.ip });
-    return { id, ativo };
+    return this.updateUser(actor, id, { ativo });
+  }
+
+  async updateUser(actor: Actor, id: number, input: { ativo?: boolean; nome?: string; email?: string; perfilId?: number; localId?: number | null; cor?: number; senha?: string }) {
+    const current = await this.prisma.usuarios.findUnique({ where: { id } });
+    if (!current) throw new AppError(404, "Usuário não encontrado.", "NAO_ENCONTRADO");
+    if (id === actor.id && input.ativo === false) throw new AppError(400, "Você não pode desativar a própria conta.", "USUARIO");
+    if (input.perfilId != null) {
+      const perfil = await this.prisma.perfis.findUnique({ where: { id: input.perfilId } });
+      if (!perfil) throw new AppError(400, "Perfil inválido.", "PERFIL");
+    }
+    if (input.localId != null) {
+      const local = await this.prisma.locais.findUnique({ where: { id: input.localId } });
+      if (!local) throw new AppError(400, "Local inválido.", "LOCAL");
+    }
+    const data: Prisma.usuariosUpdateInput = {};
+    if (input.ativo != null) data.ativo = input.ativo;
+    if (input.nome != null) data.nome = input.nome.trim();
+    if (input.email != null) data.email = input.email.trim().toLowerCase();
+    if (input.perfilId != null) data.perfis = { connect: { id: input.perfilId } };
+    if (input.localId !== undefined) data.locais = input.localId == null ? { disconnect: true } : { connect: { id: input.localId } };
+    if (input.cor != null) data.cor_avatar = input.cor;
+    if (input.senha) data.senha_hash = await hashPassword(input.senha);
+    try {
+      await this.prisma.usuarios.update({ where: { id }, data });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new AppError(409, "Já existe uma conta com este e-mail.", "DUPLICADO");
+      throw error;
+    }
+    await audit(this.prisma, {
+      usuarioId: actor.id,
+      acao: input.ativo != null && Object.keys(input).length === 1 ? "USUARIO_STATUS" : "USUARIO_ALTERADO",
+      entidade: "usuarios",
+      entidadeId: id,
+      depois: { ativo: input.ativo, nome: input.nome, email: input.email, perfilId: input.perfilId, localId: input.localId, cor: input.cor, senha: input.senha ? "alterada" : undefined },
+      ip: actor.ip,
+    });
+    return { id };
   }
 
   async setProfileScreens(actor: Actor, id: number, telas: string[]) {

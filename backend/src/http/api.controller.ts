@@ -311,8 +311,21 @@ export class WorkspaceController {
 
   @Screen("usuarios", "edit")
   @Patch("users/:id")
-  userActive(@Param("id") id: string, @Body(new ZodPipe(z.object({ ativo: z.boolean() }))) body: { ativo: boolean }, @Req() request: AuthedRequest) {
-    return this.operations.setUserActive(actorOf(request), numericId(id), body.ativo);
+  updateUser(
+    @Param("id") id: string,
+    @Body(new ZodPipe(z.object({
+      ativo: z.boolean().optional(),
+      nome: z.string().min(5).max(150).optional(),
+      email: z.string().email().optional(),
+      perfilId: z.number().int().positive().optional(),
+      localId: z.number().int().positive().nullable().optional(),
+      cor: z.number().int().min(0).max(8).optional(),
+      senha: password.optional(),
+    }).refine((value) => Object.values(value).some((item) => item !== undefined), { message: "Informe ao menos um campo para atualizar." })))
+    body: { ativo?: boolean; nome?: string; email?: string; perfilId?: number; localId?: number | null; cor?: number; senha?: string },
+    @Req() request: AuthedRequest,
+  ) {
+    return this.operations.updateUser(actorOf(request), numericId(id), body);
   }
 
   @Screen("perfis", "edit")
