@@ -1,4 +1,4 @@
-import { LayoutDashboard, ListTodo, Users, Clock, CheckCheck, CalendarDays, FileText, BarChart3, Bell, Settings, UserCog, ShieldCheck, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, ListTodo, Users, Clock, CheckCheck, CalendarDays, FileText, BarChart3, Bell, Settings, UserCog, ShieldCheck, MapPin, type LucideIcon } from "lucide-react";
 
 export type Screen = { id: string; name: string; hint: string; area: string; icon: LucideIcon };
 export const screens: Screen[] = [
@@ -13,6 +13,7 @@ export const screens: Screen[] = [
   { id: "notificacoes", name: "Notificações", hint: "Alertas e avisos", area: "Sistema", icon: Bell },
   { id: "usuarios", name: "Usuários", hint: "Contas da equipe", area: "Sistema", icon: UserCog },
   { id: "perfis", name: "Perfis", hint: "Permissões de acesso", area: "Sistema", icon: ShieldCheck },
+  { id: "locais", name: "Locais de prestação", hint: "Unidades, endereços e vagas", area: "Sistema", icon: MapPin },
   { id: "configuracoes", name: "Configurações", hint: "Preferências gerais", area: "Sistema", icon: Settings },
 ];
 export const areas = ["Principal", "Acompanhamento", "Judicial", "Sistema"];

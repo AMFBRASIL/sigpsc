@@ -5,19 +5,24 @@ import { PageHeader } from "@/components/sigpsc/page-header";
 import { StatusBadge } from "@/components/sigpsc/status-badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { locais, prestadores } from "@/lib/mock-data";
+import { downloadFile } from "@/lib/api";
+import { locais as locaisMock, prestadores as prestadoresMock } from "@/lib/mock-data";
+import { useDemo } from "@/lib/daily-demo";
 import { meta } from "@/lib/meta";
 
 export const Route = createFileRoute("/prestadores/")({ head: () => meta("Prestadores", "Lista de prestadores com busca, filtros e acompanhamento de horas."), component: Lista });
 const filtros = ["Todos", "Ativo", "Concluído", "Suspenso", "Pendente"];
 
 function Lista() {
+  const { prestadores: people, workspace } = useDemo();
+  const prestadores = workspace ? people : prestadoresMock;
+  const locais = workspace ? workspace.locais.map((item) => item.nome) : locaisMock;
   const [q, setQ] = useState(""); const [f, setF] = useState("Todos");
   const [local, setLocal] = useState(""); const [responsavel, setResponsavel] = useState(""); const [conclusao, setConclusao] = useState(false);
-  const rows = useMemo(() => prestadores.filter((p) => (f === "Todos" || p.situacao === f) && (!local || p.local === local) && (!responsavel || p.supervisor === responsavel) && (!conclusao || (p.situacao === "Ativo" && p.horasCumpridas / p.horasTotais >= 0.8)) && (p.nome + p.cpf + p.processo).toLowerCase().includes(q.toLowerCase())), [q, f, local, responsavel, conclusao]);
+  const rows = useMemo(() => prestadores.filter((p) => (f === "Todos" || p.situacao === f) && (!local || p.local === local) && (!responsavel || p.supervisor === responsavel) && (!conclusao || (p.situacao === "Ativo" && p.horasCumpridas / p.horasTotais >= 0.8)) && (p.nome + p.cpf + p.processo).toLowerCase().includes(q.toLowerCase())), [q, f, local, responsavel, conclusao, prestadores]);
   return (
     <div className="mx-auto max-w-7xl">
-      <PageHeader title="Prestadores" subtitle={`${prestadores.length} cadastrados`} actions={<><Button variant="outline"><Download />Exportar</Button><Button asChild><Link to="/prestadores/novo"><Plus />Novo prestador</Link></Button></>} />
+      <PageHeader title="Prestadores" subtitle={`${prestadores.length} cadastrados`} actions={<><Button variant="outline" onClick={() => { void downloadFile("/api/v1/reports/prestadores", "prestadores.csv"); }}><Download />Exportar</Button><Button asChild><Link to="/prestadores/novo"><Plus />Novo prestador</Link></Button></>} />
       <div className="mb-4 flex flex-col gap-3 md:flex-row">
         <div className="relative flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome, CPF ou nº do processo" className="h-10 w-full rounded-lg border bg-card pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" /></div>
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">{filtros.map((x) => <Button key={x} onClick={() => setF(x)} variant={f === x ? "default" : "outline"} className="h-10 shrink-0">{x}</Button>)}</div>

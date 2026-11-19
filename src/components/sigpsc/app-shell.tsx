@@ -1,31 +1,47 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { ListTodo, UserRound, LayoutDashboard, Users, Clock, CheckCheck, CalendarDays, FileText, BarChart3, Bell, Settings, UserCog, ShieldCheck, ChevronsLeft, Scale, LogOut, Menu, Search, X } from "lucide-react";
+import { ListTodo, UserRound, LayoutDashboard, Users, Clock, CheckCheck, CalendarDays, FileText, BarChart3, Bell, Settings, UserCog, ShieldCheck, MapPin, ChevronsLeft, Scale, LogOut, Menu, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { useDemo } from "@/lib/daily-demo";
 
-const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/dia", label: "Lista do dia", icon: ListTodo },
-  { to: "/minha-prestacao", label: "Área do prestador", icon: UserRound },
-  { to: "/prestadores", label: "Prestadores", icon: Users },
-  { to: "/registro", label: "Registrar horas", icon: Clock },
-  { to: "/validacao", label: "Validação", icon: CheckCheck },
-  { to: "/escalas", label: "Escalas", icon: CalendarDays },
-  { to: "/documentos", label: "Documentos", icon: FileText },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/notificacoes", label: "Notificações", icon: Bell },
-  { to: "/usuarios", label: "Usuários", icon: UserCog },
-  { to: "/perfis", label: "Perfis", icon: ShieldCheck },
-  { to: "/configuracoes", label: "Configurações", icon: Settings },
+const groups = [
+  { name: "Principal", items: [
+    { to: "/", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/dia", label: "Lista do dia", icon: ListTodo },
+  ] },
+  { name: "Acompanhamento", items: [
+    { to: "/prestadores", label: "Prestadores", icon: Users },
+    { to: "/minha-prestacao", label: "Área do prestador", icon: UserRound },
+    { to: "/registro", label: "Registrar horas", icon: Clock },
+    { to: "/validacao", label: "Validação", icon: CheckCheck },
+    { to: "/escalas", label: "Escalas", icon: CalendarDays },
+  ] },
+  { name: "Judicial", items: [
+    { to: "/documentos", label: "Documentos", icon: FileText },
+    { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
+  ] },
+  { name: "Sistema", items: [
+    { to: "/notificacoes", label: "Notificações", icon: Bell },
+    { to: "/usuarios", label: "Usuários", icon: UserCog },
+    { to: "/perfis", label: "Perfis", icon: ShieldCheck },
+    { to: "/locais", label: "Locais de prestação", icon: MapPin },
+    { to: "/configuracoes", label: "Configurações", icon: Settings },
+  ] },
 ] as const;
-const mobileNav = [nav[0], nav[1], nav[3], nav[5]];
+const mobileNav = (["/", "/dia", "/prestadores", "/validacao"] as const).map((to) => groups.flatMap((group) => group.items).find((item) => item.to === to)!);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const { workspace } = useDemo();
+  const nome = workspace?.user.nome ?? "Ana Souza";
+  const perfil = workspace?.user.perfil ?? "Coordenadora";
+  const sigla = nome.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("");
   const active = (to: string) => (to === "/" ? path === "/" : path.startsWith(to));
+  const sair = () => { void api("/api/v1/auth/logout", { method: "POST" }).finally(() => window.location.assign("/login")); };
 
   const Brand = ({ small }: { small?: boolean }) => (
     <div className="flex items-center gap-3">
@@ -34,14 +50,19 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
   const Links = ({ small, onClick }: { small?: boolean; onClick?: () => void }) => (
-    <nav className="flex flex-1 flex-col gap-1">
-      {nav.map((n) => (
-        <Link key={n.to} to={n.to} onClick={onClick} title={n.label}
-          className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-            active(n.to) ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground", small && "justify-center px-0")}>
-          <n.icon className={cn("size-[18px] shrink-0", active(n.to) && "text-sidebar-primary")} />
-          {!small && <span>{n.label}</span>}
-        </Link>
+    <nav className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+      {groups.map((group, index) => (
+        <div key={group.name} className="flex flex-col gap-1">
+          {small ? index > 0 && <span className="mx-auto my-1 block h-px w-6 bg-sidebar-border" /> : <p className={cn("px-3 text-[11px] font-semibold uppercase tracking-wide text-sidebar-foreground/45", index > 0 && "pt-2")}>{group.name}</p>}
+          {group.items.map((n) => (
+            <Link key={n.to} to={n.to} onClick={onClick} title={n.label}
+              className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                active(n.to) ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground", small && "justify-center px-0")}>
+              <n.icon className={cn("size-[18px] shrink-0", active(n.to) && "text-sidebar-primary")} />
+              {!small && <span>{n.label}</span>}
+            </Link>
+          ))}
+        </div>
       ))}
     </nav>
   );
@@ -57,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <button onClick={() => setCollapsed(!collapsed)} className="mt-2 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs text-sidebar-foreground/60 hover:bg-sidebar-accent/60" aria-label="Recolher menu">
           <ChevronsLeft className={cn("size-4 transition-transform", collapsed && "rotate-180")} />{!collapsed && "Recolher"}
         </button>
-        <Link to="/login" className={cn("mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/60", collapsed && "justify-center")}><LogOut className="size-[18px]" />{!collapsed && "Sair"}</Link>
+        <button type="button" onClick={sair} className={cn("mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/60", collapsed && "justify-center")}><LogOut className="size-[18px]" />{!collapsed && "Sair"}</button>
       </aside>
 
       {drawer && (
@@ -66,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-sidebar p-4 animate-in slide-in-from-left">
             <div className="mb-6 flex items-center justify-between"><Brand /><button onClick={() => setDrawer(false)} className="text-sidebar-foreground" aria-label="Fechar"><X className="size-5" /></button></div>
             <Links onClick={() => setDrawer(false)} />
-            <Link to="/login" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70"><LogOut className="size-[18px]" />Sair</Link>
+            <button type="button" onClick={sair} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70"><LogOut className="size-[18px]" />Sair</button>
           </aside>
         </div>
       )}
@@ -84,8 +105,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Bell className="size-5" /><span className="absolute right-2 top-2 size-2 rounded-full bg-danger" />
             </Link>
             <div className="flex items-center gap-2">
-              <div className="grid size-9 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">AS</div>
-              <div className="hidden leading-tight md:block"><p className="text-sm font-semibold">Ana Souza</p><p className="text-xs text-muted-foreground">Coordenadora</p></div>
+              <div className="grid size-9 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{sigla}</div>
+              <div className="hidden leading-tight md:block"><p className="text-sm font-semibold">{nome}</p><p className="text-xs text-muted-foreground">{perfil}</p></div>
             </div>
           </div>
         </header>

@@ -1,17 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ChevronRight, User, Palette, Bell, Languages, Users, ShieldCheck, MapPin, Zap, History, Mail, Plug, KeyRound, Database, Lock, Search, Copy, Plus, Download, Cloud, Globe, FileText, MessageSquare, Server, CheckCircle2, Send, Briefcase, Sun, Moon, Monitor, LayoutGrid, List, Rows3, AlertTriangle, Clock, Building2, School, HeartPulse, Trees, CalendarClock, Workflow, Filter, Scale, FileSignature, FlaskConical, Webhook, type LucideIcon } from "lucide-react";
+import { ChevronRight, User, Palette, Bell, Languages, Users, ShieldCheck, MapPin, Zap, History, Mail, Plug, KeyRound, Database, Lock, Search, Copy, Plus, Download, Cloud, Globe, FileText, MessageSquare, Server, CheckCircle2, Send, Briefcase, Sun, Moon, Monitor, LayoutGrid, List, Rows3, AlertTriangle, Clock, CalendarClock, CalendarDays, Settings2, Workflow, Filter, Scale, FileSignature, FlaskConical, Webhook, Eye, EyeOff, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/sigpsc/page-header";
 import { WizardDialog, ChoiceCard, type WizardStep } from "@/components/sigpsc/wizard-dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { api, downloadFile } from "@/lib/api";
+import { formatIso, normalizeDatePattern } from "@/lib/date-format";
+import { useDemo } from "@/lib/daily-demo";
 import { meta } from "@/lib/meta";
 
 export const Route = createFileRoute("/configuracoes")({ head: () => meta("Configurações", "Preferências do sistema: conta, equipe, e-mail, automações, API e dados."), component: Config });
 
-type Item = { id: string; title: string; hint: string; icon: LucideIcon; tag?: string; link?: "/usuarios" | "/perfis" };
+type Item = { id: string; title: string; hint: string; icon: LucideIcon; tag?: string; link?: "/usuarios" | "/perfis" | "/locais" };
 const groups: { name: string; items: Item[] }[] = [
   { name: "Conta", items: [
     { id: "perfil", title: "Meu perfil", hint: "Informações pessoais e cargo", icon: User },
@@ -19,10 +22,13 @@ const groups: { name: string; items: Item[] }[] = [
     { id: "notif", title: "Notificações", hint: "Alertas, sons e canais", icon: Bell },
     { id: "idioma", title: "Idioma e região", hint: "Idioma, fuso e formatos", icon: Languages },
   ] },
+  { name: "Sistema", items: [
+    { id: "sistema", title: "Sistema", hint: "Padrão de data dos cadastros", icon: Settings2 },
+  ] },
   { name: "Equipe e operação", items: [
     { id: "usuarios", title: "Usuários", hint: "Contas, convites e status", icon: Users, link: "/usuarios" },
     { id: "perfis", title: "Perfis de acesso", hint: "Permissões por tela", icon: ShieldCheck, link: "/perfis" },
-    { id: "locais", title: "Locais de prestação", hint: "Unidades, endereços e vagas", icon: MapPin },
+    { id: "locais", title: "Locais de prestação", hint: "Unidades, endereços e vagas", icon: MapPin, link: "/locais" },
     { id: "auto", title: "Automações", hint: "Regras, gatilhos e lembretes", icon: Zap, tag: "Beta" },
     { id: "audit", title: "Auditoria", hint: "Histórico de ações da equipe", icon: History },
   ] },
@@ -37,12 +43,24 @@ const groups: { name: string; items: Item[] }[] = [
   ] },
 ];
 
-const Row = ({ label, hint, on = false }: { label: string; hint?: string; on?: boolean }) => (
-  <div className="flex items-center justify-between gap-4 rounded-xl border bg-card p-4 shadow-card"><div><p className="text-sm font-medium">{label}</p>{hint && <p className="text-xs text-muted-foreground">{hint}</p>}</div><Switch defaultChecked={on} aria-label={label} /></div>
+const Row = ({ label, hint, on = false, setOn }: { label: string; hint?: string; on?: boolean; setOn?: (value: boolean) => void }) => (
+  <div className="flex items-center justify-between gap-4 rounded-xl border bg-card p-4 shadow-card"><div><p className="text-sm font-medium">{label}</p>{hint && <p className="text-xs text-muted-foreground">{hint}</p>}</div><Switch {...(setOn ? { checked: on, onCheckedChange: setOn } : { defaultChecked: on })} aria-label={label} /></div>
 );
-const Field = ({ label, value = "", placeholder, type = "text" }: { label: string; value?: string; placeholder?: string; type?: string }) => (
-  <label className="block"><span className="mb-1.5 block text-sm font-semibold">{label}</span><Input type={type} defaultValue={value} placeholder={placeholder} className="h-12" /></label>
+const Field = ({ label, value = "", onChange, placeholder, type = "text" }: { label: string; value?: string; onChange?: (value: string) => void; placeholder?: string; type?: string }) => (
+  <label className="block"><span className="mb-1.5 block text-sm font-semibold">{label}</span><Input type={type} value={onChange ? value : undefined} defaultValue={onChange ? undefined : value} onChange={onChange ? (event) => onChange(event.target.value) : undefined} placeholder={placeholder} className="h-12" /></label>
 );
+function SecretField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-semibold">{label}</span>
+      <span className="relative block">
+        <Input type={visible ? "text" : "password"} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} autoComplete="off" className="h-12 pr-12" />
+        <button type="button" className="absolute right-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground" aria-label={visible ? "Ocultar credencial" : "Mostrar credencial"} onClick={() => setVisible((current) => !current)}>{visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button>
+      </span>
+    </label>
+  );
+}
 const Grid = ({ children }: { children: ReactNode }) => <div className="grid gap-3 sm:grid-cols-2">{children}</div>;
 const Q = ({ children }: { children: ReactNode }) => <p className="font-display text-lg font-semibold">{children}</p>;
 const muted = "bg-muted text-foreground";
@@ -65,17 +83,40 @@ const Review = ({ rows }: { rows: [string, string][] }) => (
 type Step = WizardStep & { body: () => ReactNode };
 type Flow = { headline: string; finish?: string; steps: Step[] };
 
-function useFlows(): Record<string, Flow> {
+function useFlows() {
+  const [formato, setFormato] = useState("DD/MM/AAAA");
   const [method, setMethod] = useState("API");
   const [provider, setProvider] = useState("Resend");
   const [theme, setTheme] = useState("Claro");
-  return {
+  const [mail, setMail] = useState({ host: "", porta: "587", usuario: "", senha: "", chave: "", remetente: "nao-responda@sigpsc.gov.br", nome: "SIGPSC — Central de Penas", dominio: "sigpsc.gov.br", assinatura: "Central de Penas e Medidas Alternativas", resumo: true, lembrete: true, mensal: false, teste: "" });
+  const set = (key: keyof typeof mail) => (value: string) => setMail((current) => ({ ...current, [key]: value }));
+  useEffect(() => {
+    void api<{ sistema: { formatoData: string }; email: { metodo: string; provedor: string | null; smtpHost: string; smtpPorta: number; smtpUsuario: string; smtpSenha: string; apiKey: string; remetenteEmail: string; remetenteNome: string; dominio: string; assinatura: string; resumoDiario: boolean; lembreteEscala: boolean; relatorioMensal: boolean } | null; perfil: { email: string } }>("/api/v1/settings").then((data) => {
+      if (data.sistema?.formatoData) setFormato(data.sistema.formatoData);
+      if (!data.email) return;
+      setMethod(data.email.metodo);
+      if (data.email.provedor) setProvider(data.email.provedor);
+      setMail((current) => ({ ...current, host: data.email?.smtpHost ?? "", porta: String(data.email?.smtpPorta ?? 587), usuario: data.email?.smtpUsuario ?? "", senha: data.email?.smtpSenha ?? "", chave: data.email?.apiKey ?? "", remetente: data.email?.remetenteEmail ?? current.remetente, nome: data.email?.remetenteNome ?? current.nome, dominio: data.email?.dominio ?? "", assinatura: data.email?.assinatura ?? "", resumo: data.email?.resumoDiario ?? true, lembrete: data.email?.lembreteEscala ?? true, mensal: data.email?.relatorioMensal ?? false, teste: current.teste || data.perfil.email }));
+    }).catch(() => undefined);
+  }, []);
+  const saveEmail = () => api("/api/v1/settings/email", { method: "POST", body: JSON.stringify({ metodo: method, provedor: provider, smtpHost: mail.host, smtpPorta: Number(mail.porta || 587), smtpUsuario: mail.usuario, smtpSenha: mail.senha || undefined, smtpSeguranca: "TLS", remetenteEmail: mail.remetente, remetenteNome: mail.nome, dominio: mail.dominio, assinatura: mail.assinatura, resumoDiario: mail.resumo, lembreteEscala: mail.lembrete, relatorioMensal: mail.mensal, apiKey: mail.chave || undefined }) });
+  const saveSystem = () => api("/api/v1/settings/system", { method: "PATCH", body: JSON.stringify({ formatoData: formato }) });
+  const testEmail = () => {
+    const email = mail.teste.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error("Informe o e-mail que deve receber o teste."); return; }
+    void api("/api/v1/settings/email/test", { method: "POST", body: JSON.stringify({ email }) }).then(() => toast.success(`E-mail de teste enviado para ${email}`)).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Não foi possível enviar"));
+  };
+  const flows = {
+    sistema: { headline: "Defina o padrão de data do sistema.", finish: "Salvar", steps: [
+      { title: "Formato", hint: "Como as datas aparecem", icon: CalendarDays, body: () => <><Q>Qual padrão de data usar?</Q><p className="text-sm text-muted-foreground">Vale para o cadastro de prestadores, o registro de horas e as escalas.</p><Pick value={formato} onChange={setFormato} options={[{ t: "DD/MM/AAAA", h: "Ex.: 19/11/2026", i: CalendarDays }, { t: "MM/DD/AAAA", h: "Ex.: 11/19/2026", i: CalendarDays }, { t: "AAAA-MM-DD", h: "Ex.: 2026-11-19", i: CalendarDays }]} /></> },
+      { title: "Revisão", hint: "Confirme e salve", icon: CheckCircle2, body: () => <Review rows={[["Formato", formato], ["Exemplo", formatIso("2026-11-19", normalizeDatePattern(formato))]]} /> },
+    ] },
     email: { headline: "Conecte o envio de e-mails.", finish: "Salvar", steps: [
       { title: "Método", hint: "API ou SMTP", icon: Mail, body: () => <><Q>Como você quer enviar?</Q><Pick value={method} onChange={setMethod} options={[{ t: "API", h: "Conecte um serviço de envio usando uma chave de API", i: Zap }, { t: "SMTP", h: "Use seu servidor com host, porta e credenciais", i: Server }]} /></> },
-      { title: "Provedor", hint: "Serviço de envio", icon: Cloud, body: () => method === "API" ? <><Q>Qual provedor de API?</Q><Pick value={provider} onChange={setProvider} options={providers} /></> : <><Q>Servidor SMTP</Q><Grid><Field label="Host" placeholder="smtp.exemplo.gov.br" /><Field label="Porta" value="587" /></Grid><Field label="Usuário" placeholder="usuario@exemplo.gov.br" /><Field label="Senha" type="password" placeholder="••••••••" /></> },
-      { title: "Credenciais", hint: "Dados de acesso", icon: KeyRound, body: () => <><Q>Dados de acesso</Q>{method === "API" && <Field label="Chave de API" placeholder="key-xxxxxxxxxxxx" />}<Grid><Field label="E-mail remetente" value="nao-responda@sigpsc.gov.br" /><Field label="Nome do remetente" value="SIGPSC — Central de Penas" /></Grid><Field label="Domínio de envio" value="sigpsc.gov.br" /></> },
-      { title: "Envios automáticos", hint: "Resumos e assinatura", icon: FileText, body: () => <><Q>O que enviar automaticamente?</Q><Row label="Resumo diário para a equipe" hint="Todos os dias às 8h" on /><Row label="Lembrete de escala ao prestador" hint="1 dia antes" on /><Row label="Relatório mensal ao juízo" /><Field label="Assinatura" value="Central de Penas e Medidas Alternativas" /></> },
-      { title: "Revisão", hint: "Confirme e salve", icon: CheckCircle2, body: () => <><Review rows={[["Método", method], [method === "API" ? "Provedor" : "Servidor", method === "API" ? provider : "SMTP próprio"], ["Remetente", "nao-responda@sigpsc.gov.br"], ["Domínio", "sigpsc.gov.br"]]} /><Button variant="outline" onClick={() => toast.success("E-mail de teste enviado (demonstração)")}><Send />Enviar e-mail de teste</Button></> },
+      { title: "Provedor", hint: "Serviço de envio", icon: Cloud, body: () => method === "API" ? <><Q>Qual provedor de API?</Q><Pick value={provider} onChange={setProvider} options={providers} /></> : <><Q>Servidor SMTP</Q><Grid><Field label="Host" value={mail.host} onChange={set("host")} placeholder="smtp.exemplo.gov.br" /><Field label="Porta" value={mail.porta} onChange={set("porta")} /></Grid><Field label="Usuário" value={mail.usuario} onChange={set("usuario")} placeholder="usuario@exemplo.gov.br" /><SecretField label="Senha" value={mail.senha} onChange={set("senha")} placeholder="••••••••" /></> },
+      { title: "Credenciais", hint: "Dados de acesso", icon: KeyRound, body: () => <><Q>Dados de acesso</Q>{method === "API" && <SecretField label="Chave de API" value={mail.chave} onChange={set("chave")} placeholder="key-xxxxxxxxxxxx" />}<Grid><Field label="E-mail remetente" value={mail.remetente} onChange={set("remetente")} /><Field label="Nome do remetente" value={mail.nome} onChange={set("nome")} /></Grid><Field label="Domínio de envio" value={mail.dominio} onChange={set("dominio")} /></> },
+      { title: "Envios automáticos", hint: "Resumos e assinatura", icon: FileText, body: () => <><Q>O que enviar automaticamente?</Q><Row label="Resumo diário para a equipe" hint="Todos os dias às 8h" on={mail.resumo} setOn={(resumo) => setMail((current) => ({ ...current, resumo }))} /><Row label="Lembrete de escala ao prestador" hint="1 dia antes" on={mail.lembrete} setOn={(lembrete) => setMail((current) => ({ ...current, lembrete }))} /><Row label="Relatório mensal ao juízo" on={mail.mensal} setOn={(mensal) => setMail((current) => ({ ...current, mensal }))} /><Field label="Assinatura" value={mail.assinatura} onChange={set("assinatura")} /></> },
+      { title: "Revisão", hint: "Confirme e salve", icon: CheckCircle2, body: () => <><Review rows={[["Método", method], [method === "API" ? "Provedor" : "Servidor", method === "API" ? provider : mail.host || "SMTP próprio"], ["Remetente", mail.remetente], ["Domínio", mail.dominio]]} /><Field label="E-mail para o teste" type="email" value={mail.teste} onChange={set("teste")} placeholder="destino@exemplo.gov.br" /><Button type="button" variant="outline" onClick={() => void testEmail()}><Send />Enviar e-mail de teste</Button></> },
     ] },
     perfil: { headline: "Mantenha seus dados em dia.", finish: "Salvar", steps: [
       { title: "Identidade", hint: "Nome e contato", icon: User, body: () => <><Field label="Nome completo" value="Ana Souza" /><Grid><Field label="E-mail" value="ana.souza@sigpsc.gov.br" /><Field label="Telefone" value="(11) 98888-1234" /></Grid></> },
@@ -94,14 +135,8 @@ function useFlows(): Record<string, Flow> {
     ] },
     idioma: { headline: "Idioma, horário e formatos.", finish: "Salvar", steps: [
       { title: "Idioma", hint: "Língua do sistema", icon: Languages, body: () => <LocalPick options={[{ t: "Português (Brasil)", h: "pt-BR", i: Globe }, { t: "Español", h: "es", i: Globe }, { t: "English", h: "en", i: Globe }]} /> },
-      { title: "Região", hint: "Fuso e formatos", icon: Clock, body: () => <><Field label="Fuso horário" value="America/Sao_Paulo (UTC-3)" /><Grid><Field label="Formato de data" value="DD/MM/AAAA" /><Field label="Primeiro dia da semana" value="Segunda-feira" /></Grid></> },
-      { title: "Revisão", hint: "Confirme e salve", icon: CheckCircle2, body: () => <Review rows={[["Idioma", "Português (Brasil)"], ["Fuso", "UTC-3"], ["Data", "DD/MM/AAAA"]]} /> },
-    ] },
-    locais: { headline: "Cadastre um local de prestação.", finish: "Cadastrar", steps: [
-      { title: "Tipo", hint: "Natureza do local", icon: Building2, body: () => <><Q>Que tipo de local?</Q><LocalPick options={[{ t: "Escola", h: "Unidades de ensino", i: School }, { t: "Saúde", h: "UBS e hospitais", i: HeartPulse }, { t: "Assistência social", h: "CRAS, CREAS e ONGs", i: Users }, { t: "Ambiental", h: "Parques e praças", i: Trees }]} /></> },
-      { title: "Endereço", hint: "Onde fica", icon: MapPin, body: () => <><Field label="Nome do local" placeholder="Ex.: Escola Municipal Dom Pedro" /><Field label="Endereço" placeholder="Rua, número e bairro" /><Grid><Field label="Cidade" value="São Paulo" /><Field label="CEP" placeholder="00000-000" /></Grid></> },
-      { title: "Vagas", hint: "Capacidade e horários", icon: Users, body: () => <><Grid><Field label="Vagas" value="5" type="number" /><Field label="Responsável" placeholder="Nome do responsável" /></Grid><Grid><Field label="Abre às" value="08:00" type="time" /><Field label="Fecha às" value="17:00" type="time" /></Grid></> },
-      { title: "Revisão", hint: "Confirme e cadastre", icon: CheckCircle2, body: () => <Review rows={[["Tipo", "Escola"], ["Vagas", "5"], ["Horário", "08:00 – 17:00"]]} /> },
+      { title: "Região", hint: "Fuso e calendário", icon: Clock, body: () => <><Field label="Fuso horário" value="America/Sao_Paulo (UTC-3)" /><Field label="Primeiro dia da semana" value="Segunda-feira" /></> },
+      { title: "Revisão", hint: "Confirme e salve", icon: CheckCircle2, body: () => <Review rows={[["Idioma", "Português (Brasil)"], ["Fuso", "UTC-3"], ["Data", "Definida em Sistema"]]} /> },
     ] },
     auto: { headline: "Automatize o dia a dia.", finish: "Ativar", steps: [
       { title: "Gatilho", hint: "Quando acontece", icon: Zap, body: () => <><Q>Quando a automação deve rodar?</Q><LocalPick options={[{ t: "Antes da escala", h: "Lembrete ao prestador", i: CalendarClock }, { t: "Falta registrada", h: "Após faltas seguidas", i: AlertTriangle }, { t: "Horas aprovadas", h: "Assim que validar", i: CheckCircle2 }, { t: "Todo mês", h: "No dia 1º", i: Clock }]} /></> },
@@ -127,7 +162,7 @@ function useFlows(): Record<string, Flow> {
       { title: "Revisão", hint: "Confirme e salve", icon: CheckCircle2, body: () => <Review rows={[["Ambiente", "Produção"], ["Eventos", "2 ativos"]]} /> },
     ] },
     dados: { headline: "Seus dados, seguros e disponíveis.", finish: "Salvar", steps: [
-      { title: "Exportação", hint: "Baixar dados", icon: Download, body: () => <Grid>{["Prestadores (CSV)", "Frequência (Excel)", "Documentos (ZIP)", "Relatórios (PDF)"].map((x) => <Button key={x} variant="outline" className="h-14 justify-start" onClick={() => toast.success(`Exportando ${x} (demonstração)`)}><Download />{x}</Button>)}</Grid> },
+      { title: "Exportação", hint: "Baixar dados", icon: Download, body: () => <Grid>{([["Prestadores (CSV)", "/api/v1/reports/prestadores", "prestadores.csv"], ["Frequência (Excel)", "/api/v1/reports/attendance?formato=xlsx", "frequencia.xlsx"], ["Documentos (ZIP)", "", ""], ["Relatórios (PDF)", "", ""]] as const).map(([label, path, file]) => <Button key={label} variant="outline" className="h-14 justify-start" onClick={() => { if (!path) { toast.error("Esta exportação ainda não está disponível neste formato."); return; } void downloadFile(path, file).then(() => toast.success(`${label} gerado`)).catch(() => toast.error("Não foi possível exportar")); }}><Download />{label}</Button>)}</Grid> },
       { title: "Backup", hint: "Cópias automáticas", icon: Database, body: () => <><Row label="Backup diário automático" hint="Último: hoje, 03:00" on /><LocalPick options={[{ t: "Diário", h: "Todos os dias às 3h", i: Clock }, { t: "Semanal", h: "Domingo às 3h", i: CalendarClock }]} /></> },
       { title: "Retenção", hint: "Por quanto tempo", icon: History, body: () => <><Field label="Retenção de registros" value="5 anos após conclusão" /><Row label="Anonimizar dados após retenção" on /></> },
       { title: "Revisão", hint: "Confirme e salve", icon: CheckCircle2, body: () => <Review rows={[["Backup", "Diário"], ["Retenção", "5 anos"]]} /> },
@@ -138,13 +173,15 @@ function useFlows(): Record<string, Flow> {
       { title: "Revisão", hint: "Confirme e salve", icon: CheckCircle2, body: () => <Review rows={[["Duas etapas", "Ligada"], ["CPF", "Oculto"], ["Encarregado", "Marcos Teixeira"]]} /> },
     ] },
   };
+  return { flows, saveEmail, saveSystem };
 }
 
 function Config() {
   const [open, setOpen] = useState<Item | null>(null);
   const [step, setStep] = useState(0);
-  const flows = useFlows();
-  const flow = open ? flows[open.id] : undefined;
+  const { reload } = useDemo();
+  const { flows, saveEmail, saveSystem } = useFlows();
+  const flow = open ? flows[open.id as keyof typeof flows] : undefined;
   const [q, setQ] = useState("");
   const match = (i: Item) => `${i.title} ${i.hint}`.toLowerCase().includes(q.toLowerCase());
   const card = (i: Item) => {
@@ -164,7 +201,7 @@ function Config() {
           </section>
         ); })}
       </div>
-      {open && flow && <WizardDialog open onOpenChange={(o) => !o && setOpen(null)} badge={`Configurações · ${open.title}`} headline={flow.headline} steps={flow.steps} step={step} setStep={setStep} finishLabel={flow.finish ?? "Salvar"} onFinish={() => { toast.success(`${open.title}: alterações salvas`); setOpen(null); }}>{flow.steps[step]!.body()}</WizardDialog>}
+      {open && flow && <WizardDialog open onOpenChange={(o) => !o && setOpen(null)} badge={`Configurações · ${open.title}`} headline={flow.headline} steps={flow.steps} step={step} setStep={setStep} finishLabel={flow.finish ?? "Salvar"} onFinish={() => { const done = () => { toast.success(`${open.title}: alterações salvas`); setOpen(null); }; if (open.id === "email") { void saveEmail().then(done).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Não foi possível salvar")); return; } if (open.id === "sistema") { void saveSystem().then(() => reload()).then(done).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Não foi possível salvar")); return; } done(); }}>{flow.steps[step]!.body()}</WizardDialog>}
     </div>
   );
 }

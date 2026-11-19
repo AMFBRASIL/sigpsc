@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -16,16 +16,95 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { DateField } from "@/components/sigpsc/date-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { prestadores, locais } from "@/lib/mock-data";
 import { durationMinutes, useDemo, type HourRecord } from "@/lib/daily-demo";
+import { formatIso, normalizeDatePattern } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
 
+function maskTime(raw: string) {
+  const cleaned = raw.replace(/[^\d:]/g, "");
+  if (cleaned.includes(":")) {
+    const [hours = "", rest = ""] = cleaned.split(":");
+    const minutes = rest.replace(/\D/g, "").slice(0, 2);
+    return `${hours.slice(0, 2)}${minutes || cleaned.endsWith(":") ? `:${minutes}` : ""}`;
+  }
+  const digits = cleaned.slice(0, 4);
+  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+function completeTime(value: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value);
+  if (!match) return "";
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return "";
+  return `${String(hours).padStart(2, "0")}:${match[2]}`;
+}
+const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
+const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
+function TimeField({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (value: string) => void }) {
+  const root = useRef<HTMLDivElement>(null);
+  const hourList = useRef<HTMLDivElement>(null);
+  const minuteList = useRef<HTMLDivElement>(null);
+  const focused = useRef(false);
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(value);
+  useEffect(() => { if (!focused.current) setText(value); }, [value]);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    for (const list of [hourList.current, minuteList.current]) {
+      const item = list?.querySelector<HTMLElement>("[data-selected]");
+      if (list && item) list.scrollTop = item.offsetTop - list.clientHeight / 2 + item.clientHeight / 2;
+    }
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  const current = completeTime(text) || value || "00:00";
+  const [hour, minute] = current.split(":");
+  const choose = (nextHour: string, nextMinute: string, close: boolean) => {
+    const time = `${nextHour}:${nextMinute}`;
+    onChange(time);
+    setText(time);
+    focused.current = false;
+    if (close) setOpen(false);
+  };
+  return (
+    <div className="min-w-0 rounded-lg border bg-card p-3 sm:p-4">
+      <div className="mb-3 flex items-center justify-between gap-1">
+        <Label htmlFor={id}>{label}</Label>
+        <Button type="button" variant="ghost" size="sm" className="px-1 text-xs text-primary" onClick={() => onChange(new Date().toTimeString().slice(0, 5))}><Clock />Agora</Button>
+      </div>
+      <div ref={root} className="relative">
+        <Input id={id} inputMode="numeric" autoComplete="off" required placeholder="00:00" aria-label={label} value={text} onClick={() => setOpen(true)} onFocus={() => { focused.current = true; setOpen(true); }} onChange={(event) => { const next = maskTime(event.target.value); setText(next); const time = completeTime(next); if (time) onChange(time); }} onBlur={() => { focused.current = false; const time = completeTime(text); if (time) { onChange(time); setText(time); } else setText(value); }} className="h-14 min-w-0 bg-background px-2 pr-12 text-xl font-semibold sm:text-2xl" />
+        <button type="button" aria-label={`Abrir horário de ${label.toLowerCase()}`} aria-expanded={open} className="absolute right-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground" onClick={() => setOpen((currentOpen) => !currentOpen)}>
+          <Clock className="size-4" />
+        </button>
+        {open && (
+          <div className="absolute bottom-full left-0 right-0 z-30 mb-2 overflow-hidden rounded-xl border bg-popover shadow-md" onMouseDown={(event) => event.preventDefault()}>
+            <div className="grid grid-cols-2 border-b text-center text-[11px] font-medium text-muted-foreground">
+              <span className="border-r py-2">Hora</span>
+              <span className="py-2">Minuto</span>
+            </div>
+            <div className="grid grid-cols-2">
+              <div ref={hourList} className="max-h-52 overflow-y-auto border-r p-1">
+                {hours.map((item) => <button key={item} type="button" data-selected={item === hour || undefined} className={cn("flex h-9 w-full items-center justify-center rounded-md text-sm", item === hour && "bg-primary font-semibold text-primary-foreground")} onClick={() => choose(item, minute, false)}>{item}</button>)}
+              </div>
+              <div ref={minuteList} className="max-h-52 overflow-y-auto p-1">
+                {minutes.map((item) => <button key={item} type="button" data-selected={item === minute || undefined} className={cn("flex h-9 w-full items-center justify-center rounded-md text-sm", item === minute && "bg-primary font-semibold text-primary-foreground")} onClick={() => choose(hour, item, true)}>{item}</button>)}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 const steps = ["Data e horários", "Atividade", "Conferência"];
-const activities = ["Organização do acervo", "Apoio na biblioteca", "Apoio administrativo"];
+const fallbackActivities = ["Organização do acervo", "Apoio na biblioteca", "Apoio administrativo"];
 
 export function HourForm({
   personal = false,
@@ -38,7 +117,13 @@ export function HourForm({
   onDone?: () => void;
   sidebarHeader?: ReactNode;
 }) {
-  const { addRecord } = useDemo();
+  const { addRecord, prestadores, workspace } = useDemo();
+  const locais = workspace?.locais.map((item) => item.nome) ?? ["Escola Municipal Dom Pedro", "UBS Vila Nova", "Parque Ecológico", "Centro de Assistência Social", "Biblioteca Pública"];
+  const activitiesFor = (name: string) => {
+    if (!workspace) return fallbackActivities;
+    const placeId = workspace.locais.find((item) => item.nome === name)?.id;
+    return (workspace.atividades ?? []).filter((item) => item.localId === placeId).map((item) => item.nome);
+  };
   const [step, setStep] = useState(0);
   const [id, setId] = useState(correction?.prestadorId ?? "1");
   const person = prestadores.find((p) => p.id === id) ?? prestadores[0];
@@ -46,6 +131,7 @@ export function HourForm({
   const [date, setDate] = useState(
     correction ? correction.data.split("/").reverse().join("-") : "2026-11-18",
   );
+  const shownDate = formatIso(date, normalizeDatePattern(workspace?.formatoData));
   const [entry, setEntry] = useState(correction?.entrada ?? "08:00");
   const [exit, setExit] = useState(correction?.saida ?? "12:00");
   const [activity, setActivity] = useState(correction?.atividade ?? "");
@@ -55,6 +141,13 @@ export function HourForm({
   const [sent, setSent] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const activities = activitiesFor(local);
+  const chooseLocal = (name: string) => {
+    const previous = activitiesFor(local);
+    const next = activitiesFor(name);
+    setLocal(name);
+    if (previous.includes(activity) && !next.includes(activity)) setActivity("");
+  };
   const minutes = durationMinutes(entry, exit);
   const duration = `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
   function go(next: number) {
@@ -178,7 +271,7 @@ export function HourForm({
         <div className="mt-auto border-t px-7 py-6">
           <p className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground"><Clock className="size-4" /> RESUMO DO REGISTRO</p>
           <p className="text-sm font-semibold">{person?.nome}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{date.split("-").reverse().join("/")} · {entry} – {exit}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{shownDate} · {entry} – {exit}</p>
           <div className="mt-4 flex items-center justify-between text-sm"><span className="text-muted-foreground">Horas calculadas</span><strong className="text-lg text-success">{minutes ? duration : "—"}</strong></div>
         </div>
       )}
@@ -216,7 +309,7 @@ export function HourForm({
                   value={id}
                   onChange={(e) => {
                     setId(e.target.value);
-                    setLocal(prestadores.find((p) => p.id === e.target.value)?.local ?? "");
+                    chooseLocal(prestadores.find((p) => p.id === e.target.value)?.local ?? "");
                   }}
                 >
                   {prestadores
@@ -238,7 +331,7 @@ export function HourForm({
                   required
                   className="h-14 w-full min-w-0 rounded-lg border bg-card px-3 text-base outline-none focus:ring-2 focus:ring-ring"
                   value={local}
-                  onChange={(e) => setLocal(e.target.value)}
+                  onChange={(e) => chooseLocal(e.target.value)}
                 >
                   {locais.map((l) => (
                     <option key={l}>{l}</option>
@@ -252,17 +345,7 @@ export function HourForm({
               <p className="text-sm text-muted-foreground">{person?.local}</p>
             </div>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="date">Data da prestação</Label>
-            <Input
-              id="date"
-              type="date"
-              required
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-14 w-full min-w-0 bg-card text-base"
-            />
-          </div>
+          <DateField id="date" label="Data da prestação" required value={date} onChange={setDate} pattern={workspace?.formatoData} className="h-14 w-full min-w-0 bg-card text-base" />
           <fieldset>
             <legend className="mb-2 text-sm font-medium">Período</legend>
             <div className="grid grid-cols-2 gap-3">
@@ -299,35 +382,10 @@ export function HourForm({
             </div>
           </fieldset>
           <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Entrada", value: entry, setter: setEntry },
-              { label: "Saída", value: exit, setter: setExit },
-            ].map(({ label, value, setter }) => (
-              <div key={label} className="min-w-0 rounded-lg border bg-card p-3 sm:p-4">
-                <div className="mb-3 flex items-center justify-between gap-1">
-                  <Label htmlFor={label}>{label}</Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="px-1 text-xs text-primary"
-                    onClick={() => setter(new Date().toTimeString().slice(0, 5))}
-                  >
-                    <Clock />
-                    Agora
-                  </Button>
-                </div>
-                <Input
-                  id={label}
-                  type="time"
-                  required
-                  value={value}
-                  onChange={(e) => setter(e.target.value)}
-                  className="h-14 min-w-0 bg-background px-2 text-xl font-semibold sm:text-2xl"
-                />
-              </div>
-            ))}
+            <TimeField id="Entrada" label="Entrada" value={entry} onChange={setEntry} />
+            <TimeField id="Saída" label="Saída" value={exit} onChange={setExit} />
           </div>
+          <p className="text-xs text-muted-foreground">Informe o horário real, com minutos. Ex.: 08:10 e 10:40.</p>
           <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-success-soft p-4 text-success">
             <Clock className="size-5" />
             <span className="text-sm font-medium">Total de horas</span>
@@ -357,6 +415,7 @@ export function HourForm({
                 </Button>
               ))}
             </div>
+            {workspace && !activities.length && <p className="mt-3 text-sm text-muted-foreground">Este local ainda não tem atividades frequentes. Cadastre-as em Locais de prestação ou descreva a atividade abaixo.</p>}
           </fieldset>
           <div className="space-y-2">
             <Label htmlFor="activity">Atividade realizada</Label>
@@ -429,7 +488,7 @@ export function HourForm({
           <dl className="grid grid-cols-2 gap-4">
             <div className="rounded-lg border bg-card p-4">
               <dt className="text-xs text-muted-foreground">Data</dt>
-              <dd className="mt-2 font-semibold">{date.split("-").reverse().join("/")}</dd>
+              <dd className="mt-2 font-semibold">{shownDate}</dd>
             </div>
             <div className="rounded-lg bg-success-soft p-4 text-success">
               <dt className="text-xs">Total de horas</dt>

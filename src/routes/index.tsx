@@ -31,7 +31,8 @@ import {
 import { PageHeader, Panel } from "@/components/sigpsc/page-header";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { horasPorLocal, horasPorMes, prestadores, registrosPendentes } from "@/lib/mock-data";
+import { horasPorLocal, horasPorMes, prestadores as prestadoresMock, registrosPendentes } from "@/lib/mock-data";
+import { useDemo } from "@/lib/daily-demo";
 import { meta } from "@/lib/meta";
 
 export const Route = createFileRoute("/")({
@@ -105,6 +106,10 @@ const tip = {
 function Dashboard() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { prestadores: people, records, workspace } = useDemo();
+  const prestadores = workspace ? people : prestadoresMock;
+  const pendentes = records.filter((item) => item.status === "Pendente");
+  const pendingRows = workspace ? pendentes : registrosPendentes;
   const [registrationOpen, setRegistrationOpen] = useState(false);
   useEffect(() => {
     if (isMobile && registrationOpen) {
@@ -112,15 +117,23 @@ function Dashboard() {
       void navigate({ to: "/registro" });
     }
   }, [isMobile, registrationOpen, navigate]);
+  const shownKpis = kpis.map((card) => {
+    const live = workspace?.dashboard.kpis.find((item) => item.label === card.label);
+    return live ? { ...card, value: live.value, hint: live.hint } : card;
+  });
+  const monthData = workspace?.dashboard.horasPorMes.length ? workspace.dashboard.horasPorMes : horasPorMes;
+  const localData = workspace?.dashboard.horasPorLocal.length ? workspace.dashboard.horasPorLocal : horasPorLocal;
+  const situacaoData = (workspace?.dashboard.situacao ?? situacao.map(({ name, value }) => ({ name, value }))).map((item, index) => ({ ...item, color: situacao[index]?.color ?? "var(--chart-1)" }));
   const proximos = prestadores
     .filter((p) => p.situacao === "Ativo")
     .map((p) => ({ ...p, pct: Math.round((p.horasCumpridas / p.horasTotais) * 100) }))
     .sort((a, b) => b.pct - a.pct)
     .slice(0, 4);
+  const greeting = workspace?.user.nome.split(" ")[0] ?? "Ana";
   return (
     <div className="mx-auto max-w-7xl">
       <PageHeader
-        title="Bom dia, Ana"
+        title={`Bom dia, ${greeting}`}
         subtitle="Quarta-feira, 18 de novembro de 2026 · Unidade Central"
         actions={
           <>
@@ -152,7 +165,7 @@ function Dashboard() {
       />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        {kpis.map((k) => (
+        {shownKpis.map((k) => (
           <div key={k.label} className="rounded-xl border bg-card p-4 shadow-card">
             <div className={`mb-3 grid size-9 place-items-center rounded-lg ${k.tone}`}>
               <k.icon className="size-[18px]" />
@@ -168,7 +181,7 @@ function Dashboard() {
         <Panel title="Horas realizadas por mês" className="lg:col-span-2">
           <div className="h-64">
             <ResponsiveContainer>
-              <AreaChart data={horasPorMes} margin={{ left: -20, right: 8 }}>
+              <AreaChart data={monthData} margin={{ left: -20, right: 8 }}>
                 <defs>
                   <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
@@ -206,13 +219,13 @@ function Dashboard() {
             <ResponsiveContainer>
               <PieChart>
                 <Pie
-                  data={situacao}
+                  data={situacaoData}
                   dataKey="value"
                   innerRadius={50}
                   outerRadius={75}
                   paddingAngle={3}
                 >
-                  {situacao.map((s) => (
+                  {situacaoData.map((s) => (
                     <Cell key={s.name} fill={s.color} />
                   ))}
                 </Pie>
@@ -221,7 +234,7 @@ function Dashboard() {
             </ResponsiveContainer>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {situacao.map((s) => (
+            {situacaoData.map((s) => (
               <div key={s.name} className="flex items-center gap-2 text-xs">
                 <span className="size-2.5 rounded-full" style={{ background: s.color }} />
                 {s.name}
@@ -236,7 +249,7 @@ function Dashboard() {
         <Panel title="Horas por local de prestação">
           <div className="h-60">
             <ResponsiveContainer>
-              <BarChart data={horasPorLocal} layout="vertical" margin={{ left: 10, right: 10 }}>
+              <BarChart data={localData} layout="vertical" margin={{ left: 10, right: 10 }}>
                 <XAxis type="number" hide />
                 <YAxis
                   type="category"
@@ -287,7 +300,7 @@ function Dashboard() {
           }
         >
           <ul className="divide-y">
-            {registrosPendentes.slice(0, 4).map((r) => (
+            {pendingRows.slice(0, 4).map((r) => (
               <li key={r.id} className="flex items-center gap-3 py-2.5 first:pt-0">
                 <div className="grid size-9 place-items-center rounded-lg bg-warning-soft text-warning">
                   <CalendarCheck className="size-4" />
@@ -310,7 +323,7 @@ function Dashboard() {
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-sidebar-primary" />
           <div>
             <p className="font-display font-semibold">
-              2 prestadores sem registro há mais de 30 dias
+              {workspace?.dashboard.semRegistro ?? 2} prestadores sem registro há mais de 30 dias
             </p>
             <p className="text-sm text-sidebar-foreground/70">
               Recomenda-se comunicar a vara responsável.

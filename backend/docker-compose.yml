@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    env_file: .env
+    ports:
+      - "127.0.0.1:3340:3340"
+    volumes:
+      - sigpsc-arquivos:/app/storage
+    restart: unless-stopped
+volumes:
+  sigpsc-arquivos:

@@ -229,6 +229,21 @@
   padding: 20px 40px;
   background: var(--card);
 }
+@media (max-width: 767px) {
+  .hour-registration-dialog {
+    width: 100%;
+    height: 100dvh;
+    max-width: none;
+    border-radius: 0;
+  }
+  .wizard-dialog-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .wizard-sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
+  .wizard-step-list { display: none; }
+  .wizard-fields, .wizard-footer { padding: 20px 16px; }
+}
 @media (min-width: 768px) and (max-width: 1023px) {
   .wizard-dialog-layout { grid-template-columns: 240px minmax(0, 1fr); }
   .wizard-fields { padding: 32px 24px 24px; }

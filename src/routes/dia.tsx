@@ -7,13 +7,11 @@ import { useDemo } from "@/lib/daily-demo";
 import { meta } from "@/lib/meta";
 export const Route = createFileRoute("/dia")({ head: () => meta("Lista do dia", "Horas a validar, ausências e prazos da equipe reunidos em uma lista."), component: Dia });
 function Dia() {
-  const { records } = useDemo();
+  const { records, workspace } = useDemo();
   const [filter, setFilter] = useState("Todas");
   const [done, setDone] = useState<string[]>([]);
-  const tasks = [
+  const tasks = workspace?.dia ?? [
     ...records.filter((r) => r.status === "Pendente").map((r) => ({ id: r.id, personId: r.prestadorId, name: r.prestador, category: "Validação", title: `${r.horas}h para validar`, detail: `${r.atividade} · ${r.local}`, date: r.data })),
-    { id: "absence", personId: "4", name: "Fernanda Costa Melo", category: "Ausências", title: "Ausência sem justificativa", detail: "Centro de Assistência Social · Luciana Prado", date: "18/11/2026" },
-    { id: "deadline", personId: "8", name: "Juliana Martins", category: "Prazos", title: "Relatório judicial até 25/11", detail: "Juizado Especial Criminal · Roberto Dias", date: "25/11/2026" },
   ];
   const visible = tasks.filter((t) => (filter === "Todas" || t.category === filter) && !done.includes(t.id));
   return <div className="mx-auto max-w-6xl"><PageHeader title="Lista do dia" subtitle="Quarta-feira, 18 de novembro · Unidade Central" />

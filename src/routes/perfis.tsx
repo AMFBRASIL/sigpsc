@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ShieldCheck, Shield, Save, Plus, Search, Users, IdCard, LayoutGrid, CircleCheck, Palette } from "lucide-react";
 import { PageHeader } from "@/components/sigpsc/page-header";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { areas, initialProfiles, initialUsers, screens, type Profile } from "@/lib/access-demo";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { useDemo } from "@/lib/daily-demo";
 import { meta } from "@/lib/meta";
 
 export const Route = createFileRoute("/perfis")({ head: () => meta("Perfis de acesso", "Defina quais telas cada perfil da equipe pode abrir."), component: Perfis });
@@ -37,17 +39,20 @@ function ScreenToggles({ value, onChange, query = "", area }: { value: string[];
 }
 
 function Perfis() {
+  const { workspace, reload } = useDemo();
   const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
+  useEffect(() => { if (workspace?.perfis.length) setProfiles(workspace.perfis); }, [workspace]);
   const [sel, setSel] = useState(profiles[0]!.id);
   const [area, setArea] = useState(areas[0]!);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Omit<Profile, "id">>({ name: "", description: "", color: 0, screens: ["dashboard"] });
-  const p = profiles.find((x) => x.id === sel)!;
-  const update = (patch: Partial<Profile>) => setProfiles((all) => all.map((x) => (x.id === sel ? { ...x, ...patch } : x)));
+  const p = profiles.find((x) => x.id === sel) ?? profiles[0]!;
+  const update = (patch: Partial<Profile>) => setProfiles((all) => all.map((x) => (x.id === p.id ? { ...x, ...patch } : x)));
   const start = () => { setDraft({ name: "", description: "", color: 0, screens: ["dashboard"] }); setStep(0); setOpen(true); };
-  const finish = () => { const id = crypto.randomUUID(); setProfiles((a) => [...a, { id, ...draft }]); setSel(id); setOpen(false); toast.success(`Perfil “${draft.name}” criado`); };
+  const finish = () => { void api("/api/v1/profiles", { method: "POST", body: JSON.stringify({ nome: draft.name, descricao: draft.description, cor: draft.color, telas: draft.screens }) }).then(async (created) => { const row = created as { id: number }; await reload(); setSel(String(row.id)); setOpen(false); toast.success(`Perfil “${draft.name}” criado`); }).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Não foi possível criar")); };
+  const salvar = () => { void api(`/api/v1/profiles/${p.id}/screens`, { method: "PATCH", body: JSON.stringify({ telas: p.screens }) }).then(() => reload()).then(() => toast.success("Perfil salvo")).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Não foi possível salvar")); };
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -72,7 +77,7 @@ function Perfis() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex gap-1.5">{avatarColors.map((c, i) => <button key={c} aria-label={`Cor ${i + 1}`} onClick={() => update({ color: i })} className={cn("size-7 rounded-full", c, p.color === i && "ring-2 ring-ring ring-offset-2")} />)}</div>
               <span className="flex items-center gap-1 text-xs text-muted-foreground"><Users className="size-3.5" />{members(p.id)} · {p.screens.length}/{screens.length}</span>
-              <Button onClick={() => toast.success("Perfil salvo")}><Save />Salvar</Button>
+              <Button onClick={salvar}><Save />Salvar</Button>
             </div>
           </section>
           <section className="rounded-xl border bg-card p-4 shadow-card">

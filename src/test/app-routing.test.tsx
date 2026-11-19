@@ -20,7 +20,7 @@ describe("App routing", () => {
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
   });
 
-  it.each(["/login", "/dia", "/minha-prestacao", "/prestadores", "/prestadores/novo", "/registro", "/validacao", "/escalas", "/documentos", "/relatorios", "/notificacoes", "/configuracoes", ...Array.from({ length: 8 }, (_, i) => `/prestadores/${i + 1}`)])("matches the registered page at %s", (path) => {
+  it.each(["/login", "/dia", "/minha-prestacao", "/prestadores", "/prestadores/novo", "/registro", "/validacao", "/escalas", "/documentos", "/relatorios", "/notificacoes", "/locais", "/configuracoes", ...Array.from({ length: 8 }, (_, i) => `/prestadores/${i + 1}`)])("matches the registered page at %s", (path) => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     const matches = router.matchRoutes(path);
     expect(matches.at(-1)?.routeId).toBeDefined();

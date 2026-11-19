@@ -1,0 +1,992 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model api_chaves {
+  id          Int                 @id @default(autoincrement()) @db.UnsignedInt
+  nome        String              @db.VarChar(80)
+  ambiente    api_chaves_ambiente @default(Produ__o)
+  prefixo     String              @db.VarChar(12)
+  ultimos4    String              @db.Char(4)
+  chave_hash  String              @unique(map: "chave_hash") @db.Char(64)
+  escopos     String?             @db.LongText
+  ultimo_uso  DateTime?           @db.DateTime(0)
+  revogada_em DateTime?           @db.DateTime(0)
+  criado_por  Int?                @db.UnsignedInt
+  criado_em   DateTime            @default(now()) @db.DateTime(0)
+  usuarios    usuarios?           @relation(fields: [criado_por], references: [id], onUpdate: Restrict, map: "api_chaves_ibfk_1")
+
+  @@index([criado_por], map: "criado_por")
+}
+
+model atividades {
+  id              Int               @id @default(autoincrement()) @db.UnsignedInt
+  local_id        Int?              @db.UnsignedInt
+  nome            String            @db.VarChar(120)
+  descricao       String?           @db.VarChar(255)
+  ativo           Boolean           @default(true)
+  locais          locais?           @relation(fields: [local_id], references: [id], onUpdate: Restrict, map: "atividades_ibfk_1")
+  escalas         escalas[]
+  registros_horas registros_horas[]
+
+  @@index([local_id], map: "local_id")
+}
+
+model auditoria {
+  id           BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  usuario_id   Int?         @db.UnsignedInt
+  prestador_id Int?         @db.UnsignedInt
+  acao         String       @db.VarChar(60)
+  entidade     String       @db.VarChar(60)
+  entidade_id  String?      @db.VarChar(40)
+  descricao    String?      @db.VarChar(500)
+  dados_antes  String?      @db.LongText
+  dados_depois String?      @db.LongText
+  ip           String?      @db.VarChar(45)
+  criado_em    DateTime     @default(now()) @db.DateTime(0)
+  usuarios     usuarios?    @relation(fields: [usuario_id], references: [id], onUpdate: Restrict, map: "auditoria_ibfk_1")
+  prestadores  prestadores? @relation(fields: [prestador_id], references: [id], onUpdate: Restrict, map: "auditoria_ibfk_2")
+
+  @@index([criado_em], map: "criado_em")
+  @@index([entidade, entidade_id], map: "entidade")
+  @@index([prestador_id], map: "prestador_id")
+  @@index([usuario_id], map: "usuario_id")
+}
+
+model automacao_execucoes {
+  id           BigInt                     @id @default(autoincrement()) @db.UnsignedBigInt
+  automacao_id Int                        @db.UnsignedInt
+  referencia   String?                    @db.VarChar(80)
+  status       automacao_execucoes_status
+  detalhe      String?                    @db.VarChar(500)
+  criado_em    DateTime                   @default(now()) @db.DateTime(0)
+  automacoes   automacoes                 @relation(fields: [automacao_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "automacao_execucoes_ibfk_1")
+
+  @@index([automacao_id], map: "automacao_id")
+}
+
+model automacoes {
+  id                  Int                   @id @default(autoincrement()) @db.UnsignedInt
+  nome                String                @db.VarChar(120)
+  gatilho             automacoes_gatilho
+  parametros_json     String?               @db.LongText
+  acao                automacoes_acao
+  destino             automacoes_destino    @default(Prestador)
+  mensagem            String?               @db.Text
+  ativo               Boolean               @default(true)
+  ultima_execucao     DateTime?             @db.DateTime(0)
+  criado_por          Int?                  @db.UnsignedInt
+  criado_em           DateTime              @default(now()) @db.DateTime(0)
+  automacao_execucoes automacao_execucoes[]
+  usuarios            usuarios?             @relation(fields: [criado_por], references: [id], onUpdate: Restrict, map: "automacoes_ibfk_1")
+
+  @@index([criado_por], map: "criado_por")
+}
+
+model backups {
+  id            Int            @id @default(autoincrement()) @db.UnsignedInt
+  tipo          backups_tipo
+  arquivo_url   String?        @db.VarChar(255)
+  tamanho_bytes BigInt?        @db.UnsignedBigInt
+  status        backups_status
+  criado_em     DateTime       @default(now()) @db.DateTime(0)
+}
+
+model comarcas {
+  id    Int     @id @default(autoincrement()) @db.UnsignedInt
+  nome  String  @db.VarChar(120)
+  uf    String  @db.Char(2)
+  varas varas[]
+
+  @@unique([nome, uf], map: "uk_comarca")
+}
+
+model config_email {
+  id                 Int                          @id @default(1) @db.UnsignedTinyInt
+  metodo             config_email_metodo          @default(API)
+  provedor           config_email_provedor?
+  api_key_cifrada    Bytes?                       @db.VarBinary(512)
+  smtp_host          String?                      @db.VarChar(150)
+  smtp_porta         Int?                         @db.UnsignedSmallInt
+  smtp_usuario       String?                      @db.VarChar(150)
+  smtp_senha_cifrada Bytes?                       @db.VarBinary(512)
+  smtp_seguranca     config_email_smtp_seguranca? @default(TLS)
+  remetente_email    String                       @db.VarChar(150)
+  remetente_nome     String                       @db.VarChar(150)
+  dominio_envio      String?                      @db.VarChar(150)
+  dominio_verificado Boolean                      @default(false)
+  assinatura         String?                      @db.Text
+  resumo_diario      Boolean                      @default(true)
+  lembrete_escala    Boolean                      @default(true)
+  relatorio_mensal   Boolean                      @default(false)
+  atualizado_em      DateTime                     @default(now()) @db.DateTime(0)
+}
+
+model config_geral {
+  chave          String    @id @db.VarChar(80)
+  valor          String?   @db.Text
+  descricao      String?   @db.VarChar(255)
+  atualizado_por Int?      @db.UnsignedInt
+  atualizado_em  DateTime  @default(now()) @db.DateTime(0)
+  usuarios       usuarios? @relation(fields: [atualizado_por], references: [id], onUpdate: Restrict, map: "config_geral_ibfk_1")
+
+  @@index([atualizado_por], map: "atualizado_por")
+}
+
+model documento_assinaturas {
+  id           Int          @id @default(autoincrement()) @db.UnsignedInt
+  documento_id Int          @db.UnsignedInt
+  usuario_id   Int?         @db.UnsignedInt
+  prestador_id Int?         @db.UnsignedInt
+  assinado_em  DateTime?    @db.DateTime(0)
+  ip           String?      @db.VarChar(45)
+  certificado  String?      @db.VarChar(255)
+  documentos   documentos   @relation(fields: [documento_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "documento_assinaturas_ibfk_1")
+  usuarios     usuarios?    @relation(fields: [usuario_id], references: [id], onUpdate: Restrict, map: "documento_assinaturas_ibfk_2")
+  prestadores  prestadores? @relation(fields: [prestador_id], references: [id], onUpdate: Restrict, map: "documento_assinaturas_ibfk_3")
+
+  @@index([documento_id], map: "documento_id")
+  @@index([prestador_id], map: "prestador_id")
+  @@index([usuario_id], map: "usuario_id")
+}
+
+model documentos {
+  id                    Int                     @id @default(autoincrement()) @db.UnsignedInt
+  processo_id           Int?                    @db.UnsignedInt
+  prestador_id          Int?                    @db.UnsignedInt
+  nome                  String                  @db.VarChar(200)
+  tipo                  documentos_tipo
+  status                documentos_status       @default(Rascunho)
+  arquivo_url           String?                 @db.VarChar(255)
+  mime                  String?                 @db.VarChar(80)
+  tamanho_bytes         Int?                    @db.UnsignedInt
+  hash_sha256           String?                 @db.Char(64)
+  visivel_prestador     Boolean                 @default(false)
+  prazo_envio           DateTime?               @db.Date
+  enviado_em            DateTime?               @db.DateTime(0)
+  protocolo_forum       String?                 @db.VarChar(60)
+  criado_por            Int?                    @db.UnsignedInt
+  criado_em             DateTime                @default(now()) @db.DateTime(0)
+  atualizado_em         DateTime                @default(now()) @db.DateTime(0)
+  codigo_verificacao    String?                 @unique(map: "documentos_codigo_verificacao") @db.Char(16)
+  em_quarentena         Boolean                 @default(false)
+  documento_assinaturas documento_assinaturas[]
+  processos             processos?              @relation(fields: [processo_id], references: [id], onUpdate: Restrict, map: "documentos_ibfk_1")
+  prestadores           prestadores?            @relation(fields: [prestador_id], references: [id], onUpdate: Restrict, map: "documentos_ibfk_2")
+  usuarios              usuarios?               @relation(fields: [criado_por], references: [id], onUpdate: Restrict, map: "documentos_ibfk_3")
+  relatorios_emitidos   relatorios_emitidos[]
+
+  @@index([criado_por], map: "criado_por")
+  @@index([prestador_id], map: "prestador_id")
+  @@index([processo_id], map: "processo_id")
+  @@index([status], map: "status")
+  @@index([tipo], map: "tipo")
+}
+
+model email_envios {
+  id           BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  destinatario String              @db.VarChar(150)
+  assunto      String              @db.VarChar(200)
+  modelo       String?             @db.VarChar(60)
+  status       email_envios_status @default(Na_fila)
+  corpo        String?             @db.MediumText
+  erro         String?             @db.VarChar(500)
+  enviado_em   DateTime?           @db.DateTime(0)
+  criado_em    DateTime            @default(now()) @db.DateTime(0)
+
+  @@index([status], map: "status")
+}
+
+model escalas {
+  id               Int                 @id @default(autoincrement()) @db.UnsignedInt
+  processo_id      Int                 @db.UnsignedInt
+  local_id         Int                 @db.UnsignedInt
+  atividade_id     Int?                @db.UnsignedInt
+  data             DateTime            @db.Date
+  hora_inicio      DateTime            @db.Time(0)
+  hora_fim         DateTime            @db.Time(0)
+  recorrencia      escalas_recorrencia @default(Nenhuma)
+  status           escalas_status      @default(Agendada)
+  justificativa    String?             @db.VarChar(255)
+  lembrete_enviado Boolean             @default(false)
+  criado_por       Int?                @db.UnsignedInt
+  criado_em        DateTime            @default(now()) @db.DateTime(0)
+  processos        processos           @relation(fields: [processo_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "escalas_ibfk_1")
+  locais           locais              @relation(fields: [local_id], references: [id], onUpdate: Restrict, map: "escalas_ibfk_2")
+  atividades       atividades?         @relation(fields: [atividade_id], references: [id], onUpdate: Restrict, map: "escalas_ibfk_3")
+  usuarios         usuarios?           @relation(fields: [criado_por], references: [id], onUpdate: Restrict, map: "escalas_ibfk_4")
+  registros_horas  registros_horas[]
+
+  @@index([atividade_id], map: "atividade_id")
+  @@index([criado_por], map: "criado_por")
+  @@index([data], map: "data")
+  @@index([local_id, data], map: "local_id")
+  @@index([processo_id], map: "processo_id")
+}
+
+model exportacoes {
+  id          Int                  @id @default(autoincrement()) @db.UnsignedInt
+  conteudo    exportacoes_conteudo
+  formato     exportacoes_formato
+  arquivo_url String?              @db.VarChar(255)
+  usuario_id  Int?                 @db.UnsignedInt
+  criado_em   DateTime             @default(now()) @db.DateTime(0)
+  usuarios    usuarios?            @relation(fields: [usuario_id], references: [id], onUpdate: Restrict, map: "exportacoes_ibfk_1")
+
+  @@index([usuario_id], map: "usuario_id")
+}
+
+model integracoes {
+  id                   Int                 @id @default(autoincrement()) @db.UnsignedInt
+  servico              integracoes_servico @unique(map: "servico")
+  conta                String?             @db.VarChar(150)
+  token_cifrado        Bytes?              @db.VarBinary(1024)
+  enviar_horas         Boolean             @default(false)
+  receber_processos    Boolean             @default(false)
+  sincronizar_escalas  Boolean             @default(false)
+  conectado            Boolean             @default(false)
+  ultima_sincronizacao DateTime?           @db.DateTime(0)
+  atualizado_em        DateTime            @default(now()) @db.DateTime(0)
+}
+
+model lgpd_solicitacoes {
+  id            Int                      @id @default(autoincrement()) @db.UnsignedInt
+  prestador_id  Int?                     @db.UnsignedInt
+  tipo          lgpd_solicitacoes_tipo
+  status        lgpd_solicitacoes_status @default(Aberta)
+  resposta      String?                  @db.Text
+  criado_em     DateTime                 @default(now()) @db.DateTime(0)
+  respondido_em DateTime?                @db.DateTime(0)
+  prestadores   prestadores?             @relation(fields: [prestador_id], references: [id], onUpdate: Restrict, map: "lgpd_solicitacoes_ibfk_1")
+
+  @@index([prestador_id], map: "prestador_id")
+}
+
+model locais {
+  id                                                                                Int                             @id @default(autoincrement()) @db.UnsignedInt
+  nome                                                                              String                          @db.VarChar(150)
+  tipo                                                                              locais_tipo                     @default(Outro)
+  cnpj                                                                              String?                         @db.VarChar(18)
+  endereco                                                                          String?                         @db.VarChar(200)
+  bairro                                                                            String?                         @db.VarChar(100)
+  cidade                                                                            String?                         @db.VarChar(100)
+  uf                                                                                String?                         @db.Char(2)
+  cep                                                                               String?                         @db.VarChar(9)
+  latitude                                                                          Decimal?                        @db.Decimal(10, 7)
+  longitude                                                                         Decimal?                        @db.Decimal(10, 7)
+  raio_metros                                                                       Int?                            @default(200) @db.UnsignedSmallInt
+  vagas                                                                             Int                             @default(0) @db.UnsignedSmallInt
+  abre_as                                                                           DateTime?                       @db.Time(0)
+  fecha_as                                                                          DateTime?                       @db.Time(0)
+  responsavel                                                                       String?                         @db.VarChar(120)
+  telefone                                                                          String?                         @db.VarChar(20)
+  email                                                                             String?                         @db.VarChar(150)
+  ativo                                                                             Boolean                         @default(true)
+  criado_em                                                                         DateTime                        @default(now()) @db.DateTime(0)
+  atualizado_em                                                                     DateTime                        @default(now()) @db.DateTime(0)
+  atividades                                                                        atividades[]
+  escalas                                                                           escalas[]
+  processo_transferencias_local_processo_transferencias_local_local_origemTolocais  processo_transferencias_local[] @relation("processo_transferencias_local_local_origemTolocais")
+  processo_transferencias_local_processo_transferencias_local_local_destinoTolocais processo_transferencias_local[] @relation("processo_transferencias_local_local_destinoTolocais")
+  processos                                                                         processos[]
+  registros_horas                                                                   registros_horas[]
+  usuarios                                                                          usuarios[]
+}
+
+model modelos_documento {
+  id       Int     @id @default(autoincrement()) @db.UnsignedInt
+  nome     String  @db.VarChar(120)
+  tipo     String  @db.VarChar(40)
+  conteudo String  @db.MediumText
+  ativo    Boolean @default(true)
+}
+
+model notificacoes {
+  id           BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  usuario_id   Int?               @db.UnsignedInt
+  prestador_id Int?               @db.UnsignedInt
+  tipo         notificacoes_tipo  @default(info)
+  titulo       String             @db.VarChar(150)
+  texto        String             @db.VarChar(500)
+  link         String?            @db.VarChar(200)
+  canal        notificacoes_canal @default(Sistema)
+  lida_em      DateTime?          @db.DateTime(0)
+  enviada_em   DateTime?          @db.DateTime(0)
+  criado_em    DateTime           @default(now()) @db.DateTime(0)
+  usuarios     usuarios?          @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "notificacoes_ibfk_1")
+  prestadores  prestadores?       @relation(fields: [prestador_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "notificacoes_ibfk_2")
+
+  @@index([prestador_id], map: "prestador_id")
+  @@index([usuario_id, lida_em], map: "usuario_id")
+}
+
+model perfil_telas {
+  perfil_id   Int     @db.UnsignedInt
+  tela_id     String  @db.VarChar(40)
+  pode_ver    Boolean @default(true)
+  pode_editar Boolean @default(false)
+  perfis      perfis  @relation(fields: [perfil_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "perfil_telas_ibfk_1")
+  telas       telas   @relation(fields: [tela_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "perfil_telas_ibfk_2")
+
+  @@id([perfil_id, tela_id])
+  @@index([tela_id], map: "tela_id")
+}
+
+model perfis {
+  id            Int            @id @default(autoincrement()) @db.UnsignedInt
+  nome          String         @unique(map: "nome") @db.VarChar(80)
+  descricao     String?        @db.VarChar(255)
+  cor           Int            @default(0) @db.UnsignedTinyInt
+  sistema       Boolean        @default(false)
+  criado_em     DateTime       @default(now()) @db.DateTime(0)
+  atualizado_em DateTime       @default(now()) @db.DateTime(0)
+  perfil_telas  perfil_telas[]
+  usuarios      usuarios[]
+}
+
+model prestador_contatos_emergencia {
+  id           Int         @id @default(autoincrement()) @db.UnsignedInt
+  prestador_id Int         @db.UnsignedInt
+  nome         String      @db.VarChar(150)
+  parentesco   String?     @db.VarChar(50)
+  telefone     String      @db.VarChar(20)
+  prestadores  prestadores @relation(fields: [prestador_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "prestador_contatos_emergencia_ibfk_1")
+
+  @@index([prestador_id], map: "prestador_id")
+}
+
+model prestadores {
+  id                            Int                             @id @default(autoincrement()) @db.UnsignedInt
+  nome                          String                          @db.VarChar(150)
+  nome_social                   String?                         @db.VarChar(150)
+  cpf                           String                          @unique(map: "cpf") @db.VarChar(14)
+  rg                            String?                         @db.VarChar(20)
+  data_nascimento               DateTime?                       @db.Date
+  sexo                          prestadores_sexo?
+  estado_civil                  String?                         @db.VarChar(30)
+  escolaridade                  String?                         @db.VarChar(60)
+  profissao                     String?                         @db.VarChar(80)
+  telefone                      String?                         @db.VarChar(20)
+  whatsapp                      String?                         @db.VarChar(20)
+  email                         String?                         @db.VarChar(150)
+  cep                           String?                         @db.VarChar(9)
+  endereco                      String?                         @db.VarChar(200)
+  bairro                        String?                         @db.VarChar(100)
+  cidade                        String?                         @db.VarChar(100)
+  uf                            String?                         @db.Char(2)
+  restricoes_saude              String?                         @db.Text
+  disponibilidade               String?                         @db.VarChar(255)
+  foto_url                      String?                         @db.VarChar(255)
+  senha_hash                    String?                         @db.VarChar(255)
+  ultimo_acesso                 DateTime?                       @db.DateTime(0)
+  criado_por                    Int?                            @db.UnsignedInt
+  criado_em                     DateTime                        @default(now()) @db.DateTime(0)
+  atualizado_em                 DateTime                        @default(now()) @db.DateTime(0)
+  auditoria                     auditoria[]
+  documento_assinaturas         documento_assinaturas[]
+  documentos                    documentos[]
+  lgpd_solicitacoes             lgpd_solicitacoes[]
+  notificacoes                  notificacoes[]
+  prestador_contatos_emergencia prestador_contatos_emergencia[]
+  usuarios                      usuarios?                       @relation(fields: [criado_por], references: [id], onUpdate: Restrict, map: "prestadores_ibfk_1")
+  processos                     processos[]
+  registros_horas               registros_horas[]
+  sessoes                       sessoes[]
+
+  @@index([criado_por], map: "criado_por")
+  @@index([nome], map: "nome")
+}
+
+model processo_historico_situacao {
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  processo_id   Int       @db.UnsignedInt
+  de_situacao   String?   @db.VarChar(20)
+  para_situacao String    @db.VarChar(20)
+  motivo        String?   @db.VarChar(255)
+  usuario_id    Int?      @db.UnsignedInt
+  criado_em     DateTime  @default(now()) @db.DateTime(0)
+  processos     processos @relation(fields: [processo_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "processo_historico_situacao_ibfk_1")
+  usuarios      usuarios? @relation(fields: [usuario_id], references: [id], onUpdate: Restrict, map: "processo_historico_situacao_ibfk_2")
+
+  @@index([processo_id], map: "processo_id")
+  @@index([usuario_id], map: "usuario_id")
+}
+
+model processo_transferencias_local {
+  id                                                         Int       @id @default(autoincrement()) @db.UnsignedInt
+  processo_id                                                Int       @db.UnsignedInt
+  local_origem                                               Int?      @db.UnsignedInt
+  local_destino                                              Int       @db.UnsignedInt
+  motivo                                                     String?   @db.VarChar(255)
+  usuario_id                                                 Int?      @db.UnsignedInt
+  criado_em                                                  DateTime  @default(now()) @db.DateTime(0)
+  processos                                                  processos @relation(fields: [processo_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "processo_transferencias_local_ibfk_1")
+  locais_processo_transferencias_local_local_origemTolocais  locais?   @relation("processo_transferencias_local_local_origemTolocais", fields: [local_origem], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "processo_transferencias_local_ibfk_2")
+  locais_processo_transferencias_local_local_destinoTolocais locais    @relation("processo_transferencias_local_local_destinoTolocais", fields: [local_destino], references: [id], onUpdate: Restrict, map: "processo_transferencias_local_ibfk_3")
+  usuarios                                                   usuarios? @relation(fields: [usuario_id], references: [id], onUpdate: Restrict, map: "processo_transferencias_local_ibfk_4")
+
+  @@index([local_destino], map: "local_destino")
+  @@index([local_origem], map: "local_origem")
+  @@index([processo_id], map: "processo_id")
+  @@index([usuario_id], map: "usuario_id")
+}
+
+model processos {
+  id                                         Int                             @id @default(autoincrement()) @db.UnsignedInt
+  prestador_id                               Int                             @db.UnsignedInt
+  numero                                     String                          @unique(map: "numero") @db.VarChar(30)
+  vara_id                                    Int?                            @db.UnsignedInt
+  juiz                                       String?                         @db.VarChar(150)
+  tipo_pena                                  processos_tipo_pena             @default(PSC)
+  horas_totais                               Decimal                         @db.Decimal(7, 2)
+  horas_semanais_min                         Decimal?                        @db.Decimal(5, 2)
+  data_decisao                               DateTime?                       @db.Date
+  data_inicio                                DateTime?                       @db.Date
+  prazo_final                                DateTime?                       @db.Date
+  local_id                                   Int?                            @db.UnsignedInt
+  supervisor_id                              Int?                            @db.UnsignedInt
+  tecnico_id                                 Int?                            @db.UnsignedInt
+  situacao                                   processos_situacao              @default(Pendente)
+  motivo_situacao                            String?                         @db.VarChar(255)
+  concluido_em                               DateTime?                       @db.Date
+  observacoes                                String?                         @db.Text
+  criado_em                                  DateTime                        @default(now()) @db.DateTime(0)
+  atualizado_em                              DateTime                        @default(now()) @db.DateTime(0)
+  horas_semanais_max                         Decimal?                        @db.Decimal(5, 2)
+  restricoes                                 String?                         @db.Text
+  tribunal                                   String?                         @db.VarChar(120)
+  documentos                                 documentos[]
+  escalas                                    escalas[]
+  processo_historico_situacao                processo_historico_situacao[]
+  processo_transferencias_local              processo_transferencias_local[]
+  prestadores                                prestadores                     @relation(fields: [prestador_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "processos_ibfk_1")
+  varas                                      varas?                          @relation(fields: [vara_id], references: [id], onUpdate: Restrict, map: "processos_ibfk_2")
+  locais                                     locais?                         @relation(fields: [local_id], references: [id], onUpdate: Restrict, map: "processos_ibfk_3")
+  usuarios_processos_supervisor_idTousuarios usuarios?                       @relation("processos_supervisor_idTousuarios", fields: [supervisor_id], references: [id], onUpdate: Restrict, map: "processos_ibfk_4")
+  usuarios_processos_tecnico_idTousuarios    usuarios?                       @relation("processos_tecnico_idTousuarios", fields: [tecnico_id], references: [id], onUpdate: Restrict, map: "processos_ibfk_5")
+  registros_horas                            registros_horas[]
+
+  @@index([local_id], map: "local_id")
+  @@index([prazo_final], map: "prazo_final")
+  @@index([prestador_id], map: "prestador_id")
+  @@index([situacao], map: "situacao")
+  @@index([supervisor_id], map: "supervisor_id")
+  @@index([tecnico_id], map: "tecnico_id")
+  @@index([vara_id], map: "vara_id")
+}
+
+model redefinicoes_senha {
+  id         Int       @id @default(autoincrement()) @db.UnsignedInt
+  email      String    @db.VarChar(150)
+  token_hash String    @db.Char(64)
+  expira_em  DateTime  @db.DateTime(0)
+  usado_em   DateTime? @db.DateTime(0)
+
+  @@index([email], map: "email")
+}
+
+model registro_anexos {
+  id              Int             @id @default(autoincrement()) @db.UnsignedInt
+  registro_id     Int             @db.UnsignedInt
+  arquivo_url     String          @db.VarChar(255)
+  nome_arquivo    String?         @db.VarChar(150)
+  mime            String?         @db.VarChar(80)
+  tamanho_bytes   Int?            @db.UnsignedInt
+  criado_em       DateTime        @default(now()) @db.DateTime(0)
+  registros_horas registros_horas @relation(fields: [registro_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "registro_anexos_ibfk_1")
+
+  @@index([registro_id], map: "registro_id")
+}
+
+model registros_horas {
+  id                                                        Int                     @id @default(autoincrement()) @db.UnsignedInt
+  processo_id                                               Int                     @db.UnsignedInt
+  escala_id                                                 Int?                    @db.UnsignedInt
+  local_id                                                  Int                     @db.UnsignedInt
+  atividade_id                                              Int?                    @db.UnsignedInt
+  atividade_texto                                           String                  @db.VarChar(200)
+  data                                                      DateTime                @db.Date
+  periodo                                                   registros_horas_periodo @default(Personalizado)
+  entrada                                                   DateTime                @db.Time(0)
+  saida                                                     DateTime                @db.Time(0)
+  intervalo_min                                             Int                     @default(0) @db.UnsignedSmallInt
+  minutos                                                   Int                     @default(0) @db.UnsignedSmallInt
+  observacoes                                               String?                 @db.Text
+  latitude                                                  Decimal?                @db.Decimal(10, 7)
+  longitude                                                 Decimal?                @db.Decimal(10, 7)
+  origem                                                    registros_horas_origem  @default(Equipe)
+  registrado_por_usuario                                    Int?                    @db.UnsignedInt
+  registrado_por_prestador                                  Int?                    @db.UnsignedInt
+  status                                                    registros_horas_status  @default(Pendente)
+  validado_por                                              Int?                    @db.UnsignedInt
+  validado_em                                               DateTime?               @db.DateTime(0)
+  motivo                                                    String?                 @db.VarChar(255)
+  registro_corrigido_id                                     Int?                    @db.UnsignedInt
+  criado_em                                                 DateTime                @default(now()) @db.DateTime(0)
+  atualizado_em                                             DateTime                @default(now()) @db.DateTime(0)
+  registro_anexos                                           registro_anexos[]
+  processos                                                 processos               @relation(fields: [processo_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "registros_horas_ibfk_1")
+  escalas                                                   escalas?                @relation(fields: [escala_id], references: [id], onUpdate: Restrict, map: "registros_horas_ibfk_2")
+  locais                                                    locais                  @relation(fields: [local_id], references: [id], onUpdate: Restrict, map: "registros_horas_ibfk_3")
+  atividades                                                atividades?             @relation(fields: [atividade_id], references: [id], onUpdate: Restrict, map: "registros_horas_ibfk_4")
+  usuarios_registros_horas_registrado_por_usuarioTousuarios usuarios?               @relation("registros_horas_registrado_por_usuarioTousuarios", fields: [registrado_por_usuario], references: [id], onUpdate: Restrict, map: "registros_horas_ibfk_5")
+  prestadores                                               prestadores?            @relation(fields: [registrado_por_prestador], references: [id], onUpdate: Restrict, map: "registros_horas_ibfk_6")
+  usuarios_registros_horas_validado_porTousuarios           usuarios?               @relation("registros_horas_validado_porTousuarios", fields: [validado_por], references: [id], onUpdate: Restrict, map: "registros_horas_ibfk_7")
+  registros_horas                                           registros_horas?        @relation("registros_horasToregistros_horas", fields: [registro_corrigido_id], references: [id], onUpdate: Restrict, map: "registros_horas_ibfk_8")
+  other_registros_horas                                     registros_horas[]       @relation("registros_horasToregistros_horas")
+  validacoes_lote_itens                                     validacoes_lote_itens[]
+
+  @@index([atividade_id], map: "atividade_id")
+  @@index([data], map: "data")
+  @@index([escala_id], map: "escala_id")
+  @@index([local_id], map: "local_id")
+  @@index([processo_id, status], map: "processo_id")
+  @@index([registrado_por_prestador], map: "registrado_por_prestador")
+  @@index([registrado_por_usuario], map: "registrado_por_usuario")
+  @@index([registro_corrigido_id], map: "registro_corrigido_id")
+  @@index([status], map: "status")
+  @@index([validado_por], map: "validado_por")
+}
+
+model relatorios_emitidos {
+  id           Int                         @id @default(autoincrement()) @db.UnsignedInt
+  tipo         relatorios_emitidos_tipo
+  filtros_json String?                     @db.LongText
+  formato      relatorios_emitidos_formato @default(PDF)
+  documento_id Int?                        @db.UnsignedInt
+  arquivo_url  String?                     @db.VarChar(255)
+  gerado_por   Int?                        @db.UnsignedInt
+  automatico   Boolean                     @default(false)
+  criado_em    DateTime                    @default(now()) @db.DateTime(0)
+  documentos   documentos?                 @relation(fields: [documento_id], references: [id], onUpdate: Restrict, map: "relatorios_emitidos_ibfk_1")
+  usuarios     usuarios?                   @relation(fields: [gerado_por], references: [id], onUpdate: Restrict, map: "relatorios_emitidos_ibfk_2")
+
+  @@index([documento_id], map: "documento_id")
+  @@index([gerado_por], map: "gerado_por")
+}
+
+model sessoes {
+  id           String       @id @db.Char(64)
+  usuario_id   Int?         @db.UnsignedInt
+  prestador_id Int?         @db.UnsignedInt
+  ip           String?      @db.VarChar(45)
+  user_agent   String?      @db.VarChar(255)
+  criado_em    DateTime     @default(now()) @db.DateTime(0)
+  ultimo_uso   DateTime     @default(now()) @db.DateTime(0)
+  expira_em    DateTime     @db.DateTime(0)
+  revogada     Boolean      @default(false)
+  usuarios     usuarios?    @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "sessoes_ibfk_1")
+  prestadores  prestadores? @relation(fields: [prestador_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "sessoes_ibfk_2")
+
+  @@index([prestador_id], map: "prestador_id")
+  @@index([usuario_id], map: "usuario_id")
+}
+
+model telas {
+  id           String         @id @db.VarChar(40)
+  nome         String         @db.VarChar(80)
+  descricao    String?        @db.VarChar(160)
+  area         telas_area
+  rota         String         @db.VarChar(120)
+  icone        String?        @db.VarChar(40)
+  ordem        Int            @default(0) @db.SmallInt
+  perfil_telas perfil_telas[]
+}
+
+model usuario_preferencias {
+  usuario_id        Int                                @id @db.UnsignedInt
+  tema              usuario_preferencias_tema          @default(Sistema)
+  densidade         usuario_preferencias_densidade     @default(Padr_o)
+  animacoes         Boolean                            @default(true)
+  idioma            String                             @default("pt-BR") @db.VarChar(10)
+  fuso_horario      String                             @default("America/Sao_Paulo") @db.VarChar(50)
+  formato_data      String                             @default("DD/MM/AAAA") @db.VarChar(20)
+  inicio_semana     usuario_preferencias_inicio_semana @default(Segunda_feira)
+  notif_sistema     Boolean                            @default(true)
+  notif_email       Boolean                            @default(true)
+  notif_whatsapp    Boolean                            @default(false)
+  notif_som         Boolean                            @default(false)
+  alerta_validacao  Boolean                            @default(true)
+  alerta_faltas     Boolean                            @default(true)
+  alerta_prazos     Boolean                            @default(true)
+  alerta_prazo_dias Int                                @default(7) @db.UnsignedTinyInt
+  resumo_semanal    Boolean                            @default(true)
+  usuarios          usuarios                           @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "usuario_preferencias_ibfk_1")
+}
+
+model usuarios {
+  id                                                               Int                             @id @default(autoincrement()) @db.UnsignedInt
+  nome                                                             String                          @db.VarChar(150)
+  email                                                            String                          @unique(map: "email") @db.VarChar(150)
+  cpf                                                              String?                         @unique(map: "cpf") @db.VarChar(14)
+  telefone                                                         String?                         @db.VarChar(20)
+  cargo                                                            String?                         @db.VarChar(80)
+  senha_hash                                                       String                          @db.VarChar(255)
+  perfil_id                                                        Int                             @db.UnsignedInt
+  local_id                                                         Int?                            @db.UnsignedInt
+  cor_avatar                                                       Int                             @default(0) @db.UnsignedTinyInt
+  foto_url                                                         String?                         @db.VarChar(255)
+  ativo                                                            Boolean                         @default(true)
+  dois_fatores                                                     Boolean                         @default(false)
+  dois_fatores_seg                                                 String?                         @db.VarChar(255)
+  tentativas_login                                                 Int                             @default(0) @db.UnsignedTinyInt
+  bloqueado_ate                                                    DateTime?                       @db.DateTime(0)
+  ultimo_acesso                                                    DateTime?                       @db.DateTime(0)
+  criado_em                                                        DateTime                        @default(now()) @db.DateTime(0)
+  atualizado_em                                                    DateTime                        @default(now()) @db.DateTime(0)
+  api_chaves                                                       api_chaves[]
+  auditoria                                                        auditoria[]
+  automacoes                                                       automacoes[]
+  config_geral                                                     config_geral[]
+  documento_assinaturas                                            documento_assinaturas[]
+  documentos                                                       documentos[]
+  escalas                                                          escalas[]
+  exportacoes                                                      exportacoes[]
+  notificacoes                                                     notificacoes[]
+  prestadores                                                      prestadores[]
+  processo_historico_situacao                                      processo_historico_situacao[]
+  processo_transferencias_local                                    processo_transferencias_local[]
+  processos_processos_supervisor_idTousuarios                      processos[]                     @relation("processos_supervisor_idTousuarios")
+  processos_processos_tecnico_idTousuarios                         processos[]                     @relation("processos_tecnico_idTousuarios")
+  registros_horas_registros_horas_registrado_por_usuarioTousuarios registros_horas[]               @relation("registros_horas_registrado_por_usuarioTousuarios")
+  registros_horas_registros_horas_validado_porTousuarios           registros_horas[]               @relation("registros_horas_validado_porTousuarios")
+  relatorios_emitidos                                              relatorios_emitidos[]
+  sessoes                                                          sessoes[]
+  usuario_preferencias                                             usuario_preferencias?
+  perfis                                                           perfis                          @relation(fields: [perfil_id], references: [id], onUpdate: Restrict, map: "usuarios_ibfk_1")
+  locais                                                           locais?                         @relation(fields: [local_id], references: [id], onUpdate: Restrict, map: "usuarios_ibfk_2")
+  validacoes_lote                                                  validacoes_lote[]
+
+  @@index([local_id], map: "local_id")
+  @@index([perfil_id], map: "perfil_id")
+}
+
+model validacoes_lote {
+  id                    Int                     @id @default(autoincrement()) @db.UnsignedInt
+  usuario_id            Int                     @db.UnsignedInt
+  acao                  validacoes_lote_acao
+  quantidade            Int                     @db.UnsignedSmallInt
+  criado_em             DateTime                @default(now()) @db.DateTime(0)
+  usuarios              usuarios                @relation(fields: [usuario_id], references: [id], onUpdate: Restrict, map: "validacoes_lote_ibfk_1")
+  validacoes_lote_itens validacoes_lote_itens[]
+
+  @@index([usuario_id], map: "usuario_id")
+}
+
+model validacoes_lote_itens {
+  lote_id         Int             @db.UnsignedInt
+  registro_id     Int             @db.UnsignedInt
+  motivo          String?         @db.VarChar(255)
+  validacoes_lote validacoes_lote @relation(fields: [lote_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "validacoes_lote_itens_ibfk_1")
+  registros_horas registros_horas @relation(fields: [registro_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "validacoes_lote_itens_ibfk_2")
+
+  @@id([lote_id, registro_id])
+  @@index([registro_id], map: "registro_id")
+}
+
+model varas {
+  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  comarca_id Int         @db.UnsignedInt
+  nome       String      @db.VarChar(150)
+  email      String?     @db.VarChar(150)
+  telefone   String?     @db.VarChar(20)
+  processos  processos[]
+  comarcas   comarcas    @relation(fields: [comarca_id], references: [id], onUpdate: Restrict, map: "varas_ibfk_1")
+
+  @@index([comarca_id], map: "comarca_id")
+}
+
+model webhook_entregas {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  webhook_id  Int       @db.UnsignedInt
+  evento      String    @db.VarChar(60)
+  payload     String    @db.LongText
+  status_http Int?      @db.SmallInt
+  tentativas  Int       @default(0) @db.UnsignedTinyInt
+  entregue_em DateTime? @db.DateTime(0)
+  criado_em   DateTime  @default(now()) @db.DateTime(0)
+  webhooks    webhooks  @relation(fields: [webhook_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "webhook_entregas_ibfk_1")
+
+  @@index([webhook_id], map: "webhook_id")
+}
+
+model webhooks {
+  id                     Int                @id @default(autoincrement()) @db.UnsignedInt
+  url                    String             @db.VarChar(255)
+  segredo                String             @db.VarChar(80)
+  ambiente               webhooks_ambiente  @default(Produ__o)
+  ev_horas_aprovadas     Boolean            @default(true)
+  ev_prestacao_concluida Boolean            @default(true)
+  ev_falta_registrada    Boolean            @default(false)
+  ativo                  Boolean            @default(true)
+  criado_em              DateTime           @default(now()) @db.DateTime(0)
+  webhook_entregas       webhook_entregas[]
+}
+
+enum usuario_preferencias_tema {
+  Claro
+  Escuro
+  Sistema
+}
+
+enum integracoes_servico {
+  Sistema_do_Tribunal @map("Sistema do Tribunal")
+  WhatsApp
+  Google_Agenda       @map("Google Agenda")
+  Assinatura_digital  @map("Assinatura digital")
+}
+
+enum exportacoes_conteudo {
+  Prestadores
+  Frequ_ncia  @map("Frequência")
+  Documentos
+  Relat_rios  @map("Relatórios")
+  Auditoria
+}
+
+enum config_email_metodo {
+  API
+  SMTP
+}
+
+enum relatorios_emitidos_tipo {
+  Cumprimento_individual @map("Cumprimento individual")
+  Frequ_ncia_mensal      @map("Frequência mensal")
+  Por_local              @map("Por local")
+  Por_vara               @map("Por vara")
+  Indicadores_gerais     @map("Indicadores gerais")
+}
+
+enum backups_tipo {
+  Autom_tico @map("Automático")
+  Manual
+}
+
+enum automacoes_gatilho {
+  Antes_da_escala   @map("Antes da escala")
+  Falta_registrada  @map("Falta registrada")
+  Faltas_seguidas   @map("Faltas seguidas")
+  Horas_aprovadas   @map("Horas aprovadas")
+  Mensal
+  Conclus_o_pr_xima @map("Conclusão próxima")
+  Prazo_judicial    @map("Prazo judicial")
+}
+
+enum locais_tipo {
+  Escola
+  Sa_de              @map("Saúde")
+  Assist_ncia_social @map("Assistência social")
+  Ambiental
+  Biblioteca
+  Outro
+}
+
+enum usuario_preferencias_densidade {
+  Confort_vel @map("Confortável")
+  Padr_o      @map("Padrão")
+  Compacta
+}
+
+enum validacoes_lote_acao {
+  Aprovar
+  Corre__o @map("Correção")
+  Recusar
+}
+
+enum exportacoes_formato {
+  CSV
+  Excel
+  PDF
+  ZIP
+}
+
+enum config_email_provedor {
+  Resend
+  SendGrid
+  Mailgun
+  Amazon_SES    @map("Amazon SES")
+  Postmark
+  Brevo
+  Mailjet
+  SparkPost
+  Elastic_Email @map("Elastic Email")
+}
+
+enum lgpd_solicitacoes_tipo {
+  Acesso
+  Corre__o     @map("Correção")
+  Anonimiza__o @map("Anonimização")
+  Exclus_o     @map("Exclusão")
+}
+
+enum api_chaves_ambiente {
+  Produ__o @map("Produção")
+  Teste
+}
+
+enum automacao_execucoes_status {
+  Sucesso
+  Falhou
+  Ignorado
+}
+
+enum telas_area {
+  Principal
+  Acompanhamento
+  Judicial
+  Sistema
+}
+
+enum relatorios_emitidos_formato {
+  PDF
+  Excel
+  CSV
+}
+
+enum lgpd_solicitacoes_status {
+  Aberta
+  Em_an_lise @map("Em análise")
+  Atendida
+  Negada
+}
+
+enum webhooks_ambiente {
+  Produ__o @map("Produção")
+  Teste
+}
+
+enum notificacoes_tipo {
+  info
+  alerta
+  erro
+  sucesso
+}
+
+enum automacoes_acao {
+  Enviar_WhatsApp         @map("Enviar WhatsApp")
+  Enviar_e_mail           @map("Enviar e-mail")
+  Criar_notifica__o       @map("Criar notificação")
+  Gerar_relat_rio         @map("Gerar relatório")
+  Aprovar_automaticamente @map("Aprovar automaticamente")
+}
+
+enum email_envios_status {
+  Na_fila   @map("Na fila")
+  Enviado
+  Falhou
+  Devolvido
+}
+
+enum backups_status {
+  Em_andamento @map("Em andamento")
+  Conclu_do    @map("Concluído")
+  Falhou
+}
+
+enum documentos_tipo {
+  Relat_rio_judicial @map("Relatório judicial")
+  Declara__o         @map("Declaração")
+  Termo
+  Of_cio             @map("Ofício")
+  Frequ_ncia         @map("Frequência")
+  Decis_o            @map("Decisão")
+  Comprovante
+  Outro
+}
+
+enum automacoes_destino {
+  Prestador
+  Supervisor
+  Coordena__o @map("Coordenação")
+  Jur_dico    @map("Jurídico")
+  Ju_zo       @map("Juízo")
+}
+
+enum documentos_status {
+  Rascunho
+  Aguardando_assinatura @map("Aguardando assinatura")
+  Assinado
+  Enviado_ao_f_rum      @map("Enviado ao fórum")
+  Arquivado
+}
+
+enum processos_tipo_pena {
+  PSC
+  Transa__o_penal       @map("Transação penal")
+  Suspens_o_condicional @map("Suspensão condicional")
+  ANPP
+  Outra
+}
+
+enum prestadores_sexo {
+  F
+  M
+  Outro
+  N_o_informado @map("Não informado")
+}
+
+enum usuario_preferencias_inicio_semana {
+  Domingo
+  Segunda_feira @map("Segunda-feira")
+}
+
+enum registros_horas_periodo {
+  Manh_         @map("Manhã")
+  Tarde
+  Noite
+  Personalizado
+}
+
+enum escalas_recorrencia {
+  Nenhuma
+  Semanal
+  Quinzenal
+  Mensal
+}
+
+enum notificacoes_canal {
+  Sistema
+  E_mail   @map("E-mail")
+  WhatsApp
+  SMS
+}
+
+enum config_email_smtp_seguranca {
+  Nenhuma
+  SSL
+  TLS
+}
+
+enum escalas_status {
+  Agendada
+  Realizada
+  Falta
+  Falta_justificada @map("Falta justificada")
+  Cancelada
+}
+
+enum processos_situacao {
+  Pendente
+  Ativo
+  Suspenso
+  Conclu_do @map("Concluído")
+  Cancelado
+}
+
+enum registros_horas_origem {
+  Equipe
+  Prestador
+  Integra__o @map("Integração")
+}
+
+enum registros_horas_status {
+  Pendente
+  Aprovado
+  Corre__o @map("Correção")
+  Recusado
+}

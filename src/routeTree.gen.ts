@@ -14,6 +14,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as DiaRouteImport } from './routes/dia'
 import { Route as DocumentosRouteImport } from './routes/documentos'
 import { Route as EscalasRouteImport } from './routes/escalas'
+import { Route as LocaisRouteImport } from './routes/locais'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MinhaPrestacaoRouteImport } from './routes/minha-prestacao'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
@@ -49,6 +50,11 @@ const DocumentosRoute = DocumentosRouteImport.update({
 const EscalasRoute = EscalasRouteImport.update({
   id: '/escalas',
   path: '/escalas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocaisRoute = LocaisRouteImport.update({
+  id: '/locais',
+  path: '/locais',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/dia': typeof DiaRoute
   '/documentos': typeof DocumentosRoute
   '/escalas': typeof EscalasRoute
+  '/locais': typeof LocaisRoute
   '/login': typeof LoginRoute
   '/minha-prestacao': typeof MinhaPrestacaoRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/dia': typeof DiaRoute
   '/documentos': typeof DocumentosRoute
   '/escalas': typeof EscalasRoute
+  '/locais': typeof LocaisRoute
   '/login': typeof LoginRoute
   '/minha-prestacao': typeof MinhaPrestacaoRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/dia': typeof DiaRoute
   '/documentos': typeof DocumentosRoute
   '/escalas': typeof EscalasRoute
+  '/locais': typeof LocaisRoute
   '/login': typeof LoginRoute
   '/minha-prestacao': typeof MinhaPrestacaoRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/dia'
     | '/documentos'
     | '/escalas'
+    | '/locais'
     | '/login'
     | '/minha-prestacao'
     | '/notificacoes'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/dia'
     | '/documentos'
     | '/escalas'
+    | '/locais'
     | '/login'
     | '/minha-prestacao'
     | '/notificacoes'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/dia'
     | '/documentos'
     | '/escalas'
+    | '/locais'
     | '/login'
     | '/minha-prestacao'
     | '/notificacoes'
@@ -225,6 +237,7 @@ export interface RootRouteChildren {
   DiaRoute: typeof DiaRoute
   DocumentosRoute: typeof DocumentosRoute
   EscalasRoute: typeof EscalasRoute
+  LocaisRoute: typeof LocaisRoute
   LoginRoute: typeof LoginRoute
   MinhaPrestacaoRoute: typeof MinhaPrestacaoRoute
   NotificacoesRoute: typeof NotificacoesRoute
@@ -273,6 +286,13 @@ declare module '@tanstack/react-router' {
       path: '/escalas'
       fullPath: '/escalas'
       preLoaderRoute: typeof EscalasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locais': {
+      id: '/locais'
+      path: '/locais'
+      fullPath: '/locais'
+      preLoaderRoute: typeof LocaisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -361,6 +381,7 @@ const rootRouteChildren: RootRouteChildren = {
   DiaRoute: DiaRoute,
   DocumentosRoute: DocumentosRoute,
   EscalasRoute: EscalasRoute,
+  LocaisRoute: LocaisRoute,
   LoginRoute: LoginRoute,
   MinhaPrestacaoRoute: MinhaPrestacaoRoute,
   NotificacoesRoute: NotificacoesRoute,
