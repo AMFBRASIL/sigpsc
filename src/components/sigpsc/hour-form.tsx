@@ -165,7 +165,7 @@ export function HourForm({
       else title?.scrollIntoView({ block: "center", behavior: "instant" });
     });
   }
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     if (step === 0) {
       if (!minutes) {
@@ -184,22 +184,29 @@ export function HourForm({
       return;
     }
     if (!person || !minutes || !date || !activity.trim()) return;
-    addRecord({
-      id: correction?.id ?? `new-${Date.now()}`,
-      prestadorId: person.id,
-      prestador: person.nome,
-      local: personal ? person.local : local,
-      data: date.split("-").reverse().join("/"),
-      entrada: entry,
-      saida: exit,
-      horas: minutes / 60,
-      atividade: activity.trim(),
-      supervisor: person.supervisor,
-      status: "Pendente",
-    });
-    toast.success("Registro enviado para validação nesta sessão.");
-    setSent(true);
-    onDone?.();
+    try {
+      await addRecord({
+        id: correction?.id ?? `new-${Date.now()}`,
+        prestadorId: person.id,
+        prestador: person.nome,
+        local: personal ? person.local : local,
+        data: date.split("-").reverse().join("/"),
+        entrada: entry,
+        saida: exit,
+        horas: minutes / 60,
+        atividade: activity.trim(),
+        supervisor: person.supervisor,
+        status: "Pendente",
+        ...(note.trim() ? { observacoes: note.trim() } : {}),
+      });
+      toast.success("Registro enviado para validação.");
+      setSent(true);
+      onDone?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Não foi possível gravar o registro.";
+      setError(message);
+      toast.error(message);
+    }
   }
   if (sent)
     return (

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { prestadores, registrosPendentes } from "@/lib/mock-data";
 import { api } from "@/lib/api";
 
-export type HourRecord = (typeof registrosPendentes)[number] & { prestadorId: string; status: "Pendente" | "Aprovado" | "Correção" | "Recusado"; motivo?: string | undefined };
+export type HourRecord = (typeof registrosPendentes)[number] & { prestadorId: string; status: "Pendente" | "Aprovado" | "Correção" | "Recusado"; motivo?: string | undefined; observacoes?: string | undefined };
 export const initialRecords: HourRecord[] = registrosPendentes.map((r) => ({ ...r, prestadorId: prestadores.find((p) => p.nome === r.prestador)?.id ?? "", status: "Pendente" }));
 initialRecords.push({ ...initialRecords[0], id: "h-approved", prestadorId: "1", prestador: "Carlos Eduardo Lima", data: "14/11/2026", entrada: "08:00", saida: "12:00", horas: 4, atividade: "Apoio na biblioteca", local: "Escola Municipal Dom Pedro", supervisor: "Ana Souza", status: "Aprovado" });
 initialRecords.push({ ...initialRecords[0], id: "h-correction", prestadorId: "1", prestador: "Carlos Eduardo Lima", data: "16/11/2026", entrada: "08:00", saida: "11:00", horas: 3, atividade: "Organização do acervo", local: "Escola Municipal Dom Pedro", supervisor: "Ana Souza", status: "Correção", motivo: "Confirme o horário de saída: a folha de frequência indica 11:30." });
@@ -36,7 +36,7 @@ export type Workspace = {
   dia: { id: string; personId: string; name: string; category: string; title: string; detail: string; date: string }[];
 };
 const live = import.meta.env.MODE !== "test";
-type Demo = { records: HourRecord[]; prestadores: Workspace["prestadores"]; workspace: Workspace | null; ready: boolean; reload: () => Promise<void>; addRecord: (record: HourRecord) => void; review: (ids: string[], status: HourRecord["status"], motivo?: string) => void };
+type Demo = { records: HourRecord[]; prestadores: Workspace["prestadores"]; workspace: Workspace | null; ready: boolean; reload: () => Promise<void>; addRecord: (record: HourRecord) => Promise<void>; review: (ids: string[], status: HourRecord["status"], motivo?: string) => Promise<void> };
 const DemoContext = createContext<Demo | null>(null);
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [records, setRecords] = useState(live ? [] : initialRecords);
@@ -68,16 +68,33 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     if (!live || pathname === "/login" || workspace) return;
     reload().catch(() => window.location.assign("/login"));
   }, [pathname, workspace]);
-  const addRecord = (record: HourRecord) => {
-    setRecords((rows) => [...rows.filter((r) => r.id !== record.id), record]);
-    if (!live) return;
+  const addRecord = async (record: HourRecord) => {
+    if (!live) {
+      setRecords((rows) => [...rows.filter((r) => r.id !== record.id), record]);
+      return;
+    }
     const person = people.find((item) => item.id === record.prestadorId);
-    if (!person?.processoId) return;
+    if (!person?.processoId) throw new Error("Processo do prestador não encontrado.");
     const [day, month, year] = record.data.split("/");
     const localId = workspace?.locais.find((item) => item.nome === record.local)?.id;
-    const body = JSON.stringify({ prestadorId: Number(record.prestadorId), processoId: Number(person.processoId), data: `${year}-${month}-${day}`, entrada: record.entrada, saida: record.saida, atividade: record.atividade, ...(localId ? { localId } : {}) });
+    const body = JSON.stringify({
+      prestadorId: Number(record.prestadorId),
+      processoId: Number(person.processoId),
+      data: `${year}-${month}-${day}`,
+      entrada: record.entrada,
+      saida: record.saida,
+      atividade: record.atividade,
+      ...(localId ? { localId } : {}),
+      ...(record.observacoes?.trim() ? { observacoes: record.observacoes.trim() } : {}),
+    });
     const existing = /^\d+$/.test(record.id);
-    void api(existing ? `/api/v1/attendance/${record.id}` : "/api/v1/attendance", { method: existing ? "PATCH" : "POST", body }).then(() => reload()).catch(() => reload());
+    try {
+      await api(existing ? `/api/v1/attendance/${record.id}` : "/api/v1/attendance", { method: existing ? "PATCH" : "POST", body });
+      await reload();
+    } catch (error) {
+      await reload();
+      throw error;
+    }
   };
   const review = (ids: string[], status: HourRecord["status"], motivo?: string) => {
     setRecords((rows) => rows.map((r) => ids.includes(r.id) && (r.status === "Pendente" || (r.status === "Aprovado" && status !== "Aprovado")) ? { ...r, status, motivo } : r));
