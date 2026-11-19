@@ -64,30 +64,38 @@ function Perfil() {
         <div className="h-3 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-brand" style={{ width: `${pct}%` }} /></div>
       </div>
 
-      <Panel title="Pacotes para o fórum" className="mt-4">
-        <p className="mb-4 text-sm text-muted-foreground">As horas enviadas ao juiz no mesmo dia formam um único pacote. O PDF sai como ofício, com os dias e horários daquele fechamento no anexo.</p>
-        <div className="space-y-3">
-          {(packs ?? []).map((pack) => {
-            const file = `pacote-${pack.fechadoEm.split("/").join("-")}.pdf`;
-            return (
-              <div key={pack.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
-                <div>
-                  <p className="font-semibold">Fechado em {pack.fechadoEm}</p>
-                  <p className="text-sm text-muted-foreground">{pack.periodo} · {pack.dias} {pack.dias === 1 ? "dia" : "dias"} · {pack.registros} {pack.registros === 1 ? "registro" : "registros"}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <strong className="text-lg text-success">{pack.horasTexto}</strong>
-                  <Button size="sm" onClick={() => downloadReport({ prestadorId: Number(p.id), tipo: "Pacote de horas para o fórum", loteId: pack.id }, file)}><FileDown />Relatório do pacote</Button>
-                </div>
-              </div>
-            );
-          })}
-          {packs && !packs.length && <p className="text-sm text-muted-foreground">Nenhum pacote fechado. Aprove as horas juntas na validação para formar o relatório do juiz.</p>}
-        </div>
-      </Panel>
-
-      <Tabs defaultValue="historico" className="mt-4">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:w-auto sm:grid-cols-4"><TabsTrigger value="historico">Histórico completo</TabsTrigger><TabsTrigger value="dados">Dados</TabsTrigger><TabsTrigger value="horas">Histórico de horas</TabsTrigger><TabsTrigger value="docs">Documentos</TabsTrigger></TabsList>
+      <Tabs defaultValue="pacotes" className="mt-4">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:w-auto sm:grid-cols-5">
+          <TabsTrigger value="pacotes">Pacotes do fórum</TabsTrigger>
+          <TabsTrigger value="historico">Histórico completo</TabsTrigger>
+          <TabsTrigger value="dados">Dados</TabsTrigger>
+          <TabsTrigger value="horas">Histórico de horas</TabsTrigger>
+          <TabsTrigger value="docs">Documentos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="pacotes" className="mt-4">
+          <Panel title="Pacotes fechados para o juiz">
+            <p className="mb-4 text-sm text-muted-foreground">As horas enviadas ao juiz no mesmo dia formam um único pacote. O PDF sai como ofício, com os dias e horários daquele fechamento no anexo. Você pode baixar de novo a qualquer momento.</p>
+            <div className="space-y-3">
+              {(packs ?? []).map((pack) => {
+                const file = `pacote-${pack.fechadoEm.split("/").join("-")}.pdf`;
+                return (
+                  <div key={pack.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+                    <div>
+                      <p className="font-semibold">Fechado em {pack.fechadoEm}</p>
+                      <p className="text-sm text-muted-foreground">{pack.periodo} · {pack.dias} {pack.dias === 1 ? "dia" : "dias"} · {pack.registros} {pack.registros === 1 ? "registro" : "registros"}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <strong className="text-lg text-success">{pack.horasTexto}</strong>
+                      <Button size="sm" onClick={() => downloadReport({ prestadorId: Number(p.id), tipo: "Pacote de horas para o fórum", loteId: pack.id }, file)}><FileDown />Relatório do pacote</Button>
+                    </div>
+                  </div>
+                );
+              })}
+              {packs && !packs.length && <p className="text-sm text-muted-foreground">Nenhum pacote fechado. Aprove as horas juntas na validação para formar o relatório do juiz.</p>}
+              {packs === null && <p className="text-sm text-muted-foreground">Carregando pacotes…</p>}
+            </div>
+          </Panel>
+        </TabsContent>
         <TabsContent value="historico" className="mt-4"><ol className="border-l-2 border-primary/20 pl-5">{history.map((event) => <li key={event.id} className="relative border-b py-4"><span className="absolute -left-[27px] top-5 size-3 rounded-full border-2 border-background bg-primary" /><p className="text-xs font-semibold text-primary">{event.date} · {event.type}</p><p className="mt-1 text-sm font-semibold">{event.title}</p><p className="text-sm text-muted-foreground">{event.detail}</p></li>)}</ol></TabsContent>
         <TabsContent value="dados" className="mt-4 grid gap-4 md:grid-cols-2">
           <Panel title="Dados pessoais"><div className="grid gap-4 sm:grid-cols-2"><Info icon={User} label="CPF" value={p.cpf} /><Info icon={Phone} label="Telefone" value={p.telefone} /><Info icon={Calendar} label="Último registro" value={p.ultimoRegistro} /><Info icon={MapPin} label="Local de prestação" value={p.local} /></div></Panel>
