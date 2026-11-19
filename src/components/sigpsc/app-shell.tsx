@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { ListTodo, UserRound, LayoutDashboard, Users, Clock, CheckCheck, CalendarDays, FileText, BarChart3, Bell, Settings, ChevronsLeft, Scale, LogOut, Menu, Search, X } from "lucide-react";
+import { ListTodo, UserRound, LayoutDashboard, Users, Clock, CheckCheck, CalendarDays, FileText, BarChart3, Bell, Settings, UserCog, ShieldCheck, ChevronsLeft, Scale, LogOut, Menu, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,8 @@ const nav = [
   { to: "/documentos", label: "Documentos", icon: FileText },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/notificacoes", label: "Notificações", icon: Bell },
+  { to: "/usuarios", label: "Usuários", icon: UserCog },
+  { to: "/perfis", label: "Perfis", icon: ShieldCheck },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 const mobileNav = [nav[0], nav[1], nav[3], nav[5]];

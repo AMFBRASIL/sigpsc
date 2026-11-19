@@ -14,4 +14,4 @@
 
 # Janela de horas com progresso lateral
 - [x] Redesenhar a janela com etapas à esquerda, resumo e ações fixas
-- [x] Verificar as etapas e o envio no computador, preservando a página no celular
+- [x] Verificar as etapas e o envio no computador, preservando a página no celular- [x] Usuários, perfis (com janelas por etapas) e configurações em cartões

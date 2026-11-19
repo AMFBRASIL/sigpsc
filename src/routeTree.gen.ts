@@ -17,8 +17,10 @@ import { Route as EscalasRouteImport } from './routes/escalas'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MinhaPrestacaoRouteImport } from './routes/minha-prestacao'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
+import { Route as PerfisRouteImport } from './routes/perfis'
 import { Route as RegistroRouteImport } from './routes/registro'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
+import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ValidacaoRouteImport } from './routes/validacao'
 import { Route as PrestadoresIndexRouteImport } from './routes/prestadores.index'
 import { Route as PrestadoresIdRouteImport } from './routes/prestadores.$id'
@@ -64,6 +66,11 @@ const NotificacoesRoute = NotificacoesRouteImport.update({
   path: '/notificacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PerfisRoute = PerfisRouteImport.update({
+  id: '/perfis',
+  path: '/perfis',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegistroRoute = RegistroRouteImport.update({
   id: '/registro',
   path: '/registro',
@@ -72,6 +79,11 @@ const RegistroRoute = RegistroRouteImport.update({
 const RelatoriosRoute = RelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsuariosRoute = UsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ValidacaoRoute = ValidacaoRouteImport.update({
@@ -104,8 +116,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/minha-prestacao': typeof MinhaPrestacaoRoute
   '/notificacoes': typeof NotificacoesRoute
+  '/perfis': typeof PerfisRoute
   '/registro': typeof RegistroRoute
   '/relatorios': typeof RelatoriosRoute
+  '/usuarios': typeof UsuariosRoute
   '/validacao': typeof ValidacaoRoute
   '/prestadores/$id': typeof PrestadoresIdRoute
   '/prestadores/novo': typeof PrestadoresNovoRoute
@@ -120,8 +134,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/minha-prestacao': typeof MinhaPrestacaoRoute
   '/notificacoes': typeof NotificacoesRoute
+  '/perfis': typeof PerfisRoute
   '/registro': typeof RegistroRoute
   '/relatorios': typeof RelatoriosRoute
+  '/usuarios': typeof UsuariosRoute
   '/validacao': typeof ValidacaoRoute
   '/prestadores/$id': typeof PrestadoresIdRoute
   '/prestadores/novo': typeof PrestadoresNovoRoute
@@ -137,8 +153,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/minha-prestacao': typeof MinhaPrestacaoRoute
   '/notificacoes': typeof NotificacoesRoute
+  '/perfis': typeof PerfisRoute
   '/registro': typeof RegistroRoute
   '/relatorios': typeof RelatoriosRoute
+  '/usuarios': typeof UsuariosRoute
   '/validacao': typeof ValidacaoRoute
   '/prestadores/$id': typeof PrestadoresIdRoute
   '/prestadores/novo': typeof PrestadoresNovoRoute
@@ -155,8 +173,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/minha-prestacao'
     | '/notificacoes'
+    | '/perfis'
     | '/registro'
     | '/relatorios'
+    | '/usuarios'
     | '/validacao'
     | '/prestadores/$id'
     | '/prestadores/novo'
@@ -171,8 +191,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/minha-prestacao'
     | '/notificacoes'
+    | '/perfis'
     | '/registro'
     | '/relatorios'
+    | '/usuarios'
     | '/validacao'
     | '/prestadores/$id'
     | '/prestadores/novo'
@@ -187,8 +209,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/minha-prestacao'
     | '/notificacoes'
+    | '/perfis'
     | '/registro'
     | '/relatorios'
+    | '/usuarios'
     | '/validacao'
     | '/prestadores/$id'
     | '/prestadores/novo'
@@ -204,8 +228,10 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MinhaPrestacaoRoute: typeof MinhaPrestacaoRoute
   NotificacoesRoute: typeof NotificacoesRoute
+  PerfisRoute: typeof PerfisRoute
   RegistroRoute: typeof RegistroRoute
   RelatoriosRoute: typeof RelatoriosRoute
+  UsuariosRoute: typeof UsuariosRoute
   ValidacaoRoute: typeof ValidacaoRoute
   PrestadoresIdRoute: typeof PrestadoresIdRoute
   PrestadoresNovoRoute: typeof PrestadoresNovoRoute
@@ -270,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/perfis': {
+      id: '/perfis'
+      path: '/perfis'
+      fullPath: '/perfis'
+      preLoaderRoute: typeof PerfisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/registro': {
       id: '/registro'
       path: '/registro'
@@ -282,6 +315,13 @@ declare module '@tanstack/react-router' {
       path: '/relatorios'
       fullPath: '/relatorios'
       preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/usuarios': {
+      id: '/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof UsuariosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/validacao': {
@@ -324,8 +364,10 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MinhaPrestacaoRoute: MinhaPrestacaoRoute,
   NotificacoesRoute: NotificacoesRoute,
+  PerfisRoute: PerfisRoute,
   RegistroRoute: RegistroRoute,
   RelatoriosRoute: RelatoriosRoute,
+  UsuariosRoute: UsuariosRoute,
   ValidacaoRoute: ValidacaoRoute,
   PrestadoresIdRoute: PrestadoresIdRoute,
   PrestadoresNovoRoute: PrestadoresNovoRoute,
