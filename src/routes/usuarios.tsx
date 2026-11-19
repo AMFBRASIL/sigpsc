@@ -13,7 +13,11 @@ import { api } from "@/lib/api";
 import { useDemo } from "@/lib/daily-demo";
 import { meta } from "@/lib/meta";
 
-export const Route = createFileRoute("/usuarios")({ head: () => meta("Usuários do sistema", "Cadastre e gerencie as contas da equipe do SIGPSC."), component: Usuarios });
+export const Route = createFileRoute("/usuarios")({
+  validateSearch: (search: Record<string, unknown>) => ({ editar: typeof search.editar === "string" ? search.editar : undefined }),
+  head: () => meta("Usuários do sistema", "Cadastre e gerencie as contas da equipe do SIGPSC."),
+  component: Usuarios,
+});
 
 const steps = [
   { title: "Quem está chegando?", hint: "Nome, e-mail e cor do avatar", icon: IdCard },
@@ -24,6 +28,8 @@ const steps = [
 const blank = { name: "", email: "", password: "", color: 0, profile: "", local: "" };
 
 function Usuarios() {
+  const { editar } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { workspace, reload } = useDemo();
   const profiles = workspace?.perfis.length ? workspace.perfis : initialProfiles;
   const places = workspace?.locais.length ? ["Todos os locais", ...workspace.locais.map((item) => item.nome)] : locais;
@@ -47,6 +53,14 @@ function Usuarios() {
     setStep(0);
     setOpen(true);
   };
+  useEffect(() => {
+    if (!editar || !users.length) return;
+    const targetId = editar === "me" ? String(workspace?.user.id ?? "") : editar;
+    const user = users.find((item) => item.id === targetId);
+    if (!user) return;
+    startEdit(user);
+    void navigate({ search: {}, replace: true });
+  }, [editar, users, workspace?.user.id]);
   const finish = () => {
     const localId = form.local === "Todos os locais" ? null : workspace?.locais.find((item) => item.nome === form.local)?.id ?? null;
     if (editingId) {

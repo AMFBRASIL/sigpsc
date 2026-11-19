@@ -107,6 +107,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2">
               <div className="grid size-9 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{sigla}</div>
               <div className="hidden leading-tight md:block"><p className="text-sm font-semibold">{nome}</p><p className="text-xs text-muted-foreground">{perfil}</p></div>
+              <Link
+                to="/usuarios"
+                search={{ editar: String(workspace?.user.id ?? "me") }}
+                className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Editar minha conta"
+                title="Editar minha conta"
+              >
+                <Settings className="size-4" />
+              </Link>
             </div>
           </div>
         </header>

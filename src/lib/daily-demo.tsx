@@ -19,7 +19,7 @@ export function selectedSummary(records: HourRecord[], ids: string[]) {
   return { selected, hours: selected.reduce((total, r) => total + r.horas, 0) };
 }
 export type Workspace = {
-  user: { nome: string; perfil: string };
+  user: { id?: number; nome: string; perfil: string };
   prestadores: Array<(typeof prestadores)[number] & { processoId?: string; percentual?: number; limiteSemanal?: number | null; minutosRestantes?: number }>;
   records: HourRecord[];
   locais: { id: number; nome: string }[];
