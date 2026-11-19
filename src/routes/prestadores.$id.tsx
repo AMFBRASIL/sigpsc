@@ -18,7 +18,7 @@ function Info({ icon: Icon, label, value }: { icon: typeof User; label: string; 
   return <div className="flex gap-3"><Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><div className="min-w-0"><p className="text-xs text-muted-foreground">{label}</p><p className="break-words text-sm font-medium">{value}</p></div></div>;
 }
 
-type Pack = { id: number; fechadoEm: string; periodo: string; dias: number; registros: number; horas: number; minutos: number; horasTexto: string };
+type Pack = { id: number; fechadoEm: string; fechadoEmHora?: string; fechadoPor?: string; periodo: string; dias: number; registros: number; horas: number; minutos: number; horasTexto: string };
 function downloadReport(body: object, filename: string) {
   void fetch("/api/v1/documents/generate", { method: "POST", credentials: "include", headers: { "content-type": "application/json", "x-sigpsc-request": "1" }, body: JSON.stringify(body) }).then(async (response) => {
     if (!response.ok) return;
@@ -74,14 +74,15 @@ function Perfil() {
         </TabsList>
         <TabsContent value="pacotes" className="mt-4">
           <Panel title="Pacotes fechados para o juiz">
-            <p className="mb-4 text-sm text-muted-foreground">As horas enviadas ao juiz no mesmo dia formam um único pacote. O PDF sai como ofício, com os dias e horários daquele fechamento no anexo. Você pode baixar de novo a qualquer momento.</p>
+            <p className="mb-4 text-sm text-muted-foreground">Horas liberadas ao juiz no mesmo dia (horário de Brasília) entram no mesmo pacote deste prestador. Em outro dia, abre-se um pacote novo. O PDF sai como ofício, com os dias e horários daquele fechamento no anexo.</p>
             <div className="space-y-3">
               {(packs ?? []).map((pack) => {
                 const file = `pacote-${pack.fechadoEm.split("/").join("-")}.pdf`;
                 return (
                   <div key={pack.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
                     <div>
-                      <p className="font-semibold">Fechado em {pack.fechadoEm}</p>
+                      <p className="font-semibold">Fechado em {pack.fechadoEmHora || pack.fechadoEm}</p>
+                      <p className="text-sm text-muted-foreground">Fechado por {pack.fechadoPor || "—"}</p>
                       <p className="text-sm text-muted-foreground">{pack.periodo} · {pack.dias} {pack.dias === 1 ? "dia" : "dias"} · {pack.registros} {pack.registros === 1 ? "registro" : "registros"}</p>
                     </div>
                     <div className="flex items-center gap-3">

@@ -30,3 +30,29 @@ export async function downloadFile(path: string, filename: string) {
   link.click();
   URL.revokeObjectURL(url);
 }
+
+export async function downloadBlob(path: string, filename: string, init?: RequestInit) {
+  const headers = new Headers(init?.headers);
+  headers.set("x-sigpsc-request", "1");
+  if (init?.body && !(init.body instanceof FormData)) headers.set("content-type", "application/json");
+  const response = await fetch(path, { ...init, headers, credentials: "include" });
+  if (!response.ok) {
+    let message = "Não foi possível baixar o arquivo.";
+    try {
+      const payload = (await response.json()) as { message?: string };
+      if (payload.message) message = payload.message;
+    } catch {
+      /* keep default */
+    }
+    throw new Error(message);
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const match = /filename="?([^"]+)"?/i.exec(disposition);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = match?.[1] || filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}

@@ -178,7 +178,7 @@ export class AttendanceController {
 
   @Screen("validacao", "edit")
   @Post("batch")
-  batch(@Body(new ZodPipe(z.object({ ids: z.array(z.number().int().positive()).min(1).max(100), status: z.enum(["Aprovado", "Correção", "Recusado"]), motivo: z.string().max(255).optional() }))) body: { ids: number[]; status: "Aprovado" | "Correção" | "Recusado"; motivo?: string }, @Req() request: AuthedRequest) {
+  batch(@Body(new ZodPipe(z.object({ ids: z.array(z.number().int().positive()).min(1).max(100), status: z.enum(["Autorizado", "Aprovado", "Correção", "Recusado"]), motivo: z.string().max(255).optional() }))) body: { ids: number[]; status: "Autorizado" | "Aprovado" | "Correção" | "Recusado"; motivo?: string }, @Req() request: AuthedRequest) {
     return this.records.review(actorOf(request), body.ids, body.status, body.motivo);
   }
 
@@ -246,6 +246,24 @@ export class DocumentsController {
   }
 }
 
+const reportTipo = z.enum([
+  "frequencia",
+  "horas-periodo",
+  "prestadores-ativos",
+  "ausencias",
+  "produtividade-local",
+  "consolidado-mensal",
+  "cumprimento",
+  "sem-registros",
+]);
+const reportQuery = z.object({
+  tipo: reportTipo,
+  inicio: iso.optional(),
+  fim: iso.optional(),
+  local: z.string().max(150).optional(),
+  prestadorId: z.coerce.number().int().positive().optional(),
+});
+
 @ApiTags("relatorios")
 @Controller("reports")
 export class ReportsController {
@@ -256,6 +274,34 @@ export class ReportsController {
   async attendance(@Query(new ZodPipe(z.object({ formato: z.enum(["csv", "xlsx"]).default("csv"), inicio: iso.optional(), fim: iso.optional() }))) query: { formato: "csv" | "xlsx"; inicio?: string; fim?: string }, @Req() request: AuthedRequest, @Res() response: Response) {
     const file = await this.operations.exportTable(actorOf(request), query.formato, query.inicio, query.fim);
     response.setHeader("Content-Type", file.mime);
+    response.setHeader("Content-Disposition", `attachment; filename="${file.nome}"`);
+    response.send(file.buffer);
+  }
+
+  @Screen("relatorios", "view")
+  @Get("preview")
+  preview(@Query(new ZodPipe(reportQuery)) query: z.infer<typeof reportQuery>, @Req() request: AuthedRequest) {
+    return this.operations.reportPreview(actorOf(request), query);
+  }
+
+  @Screen("relatorios", "view")
+  @Get("export")
+  async export(
+    @Query(new ZodPipe(reportQuery.extend({ formato: z.enum(["csv", "xlsx"]).default("xlsx") }))) query: z.infer<typeof reportQuery> & { formato: "csv" | "xlsx" },
+    @Req() request: AuthedRequest,
+    @Res() response: Response,
+  ) {
+    const file = await this.operations.exportReport(actorOf(request), query);
+    response.setHeader("Content-Type", file.mime);
+    response.setHeader("Content-Disposition", `attachment; filename="${file.nome}"`);
+    response.send(file.buffer);
+  }
+
+  @Screen("relatorios", "view")
+  @Post("pdf")
+  async pdf(@Body(new ZodPipe(reportQuery)) body: z.infer<typeof reportQuery>, @Req() request: AuthedRequest, @Res() response: Response) {
+    const file = await this.operations.pdfReport(actorOf(request), body);
+    response.setHeader("Content-Type", "application/pdf");
     response.setHeader("Content-Disposition", `attachment; filename="${file.nome}"`);
     response.send(file.buffer);
   }

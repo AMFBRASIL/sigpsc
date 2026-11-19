@@ -11,7 +11,7 @@ function Dia() {
   const [filter, setFilter] = useState("Todas");
   const [done, setDone] = useState<string[]>([]);
   const tasks = workspace?.dia ?? [
-    ...records.filter((r) => r.status === "Pendente").map((r) => ({ id: r.id, personId: r.prestadorId, name: r.prestador, category: "Validação", title: `${r.horas}h para validar`, detail: `${r.atividade} · ${r.local}`, date: r.data })),
+    ...records.filter((r) => r.status === "Pendente" || r.status === "Liberar para juiz").map((r) => ({ id: r.id, personId: r.prestadorId, name: r.prestador, category: "Validação", title: r.status === "Liberar para juiz" ? `${r.horas}h para liberar ao juiz` : `${r.horas}h para autorizar`, detail: `${r.atividade} · ${r.local}`, date: r.data })),
   ];
   const visible = tasks.filter((t) => (filter === "Todas" || t.category === filter) && !done.includes(t.id));
   return <div className="mx-auto max-w-6xl"><PageHeader title="Lista do dia" subtitle="Quarta-feira, 18 de novembro · Unidade Central" />

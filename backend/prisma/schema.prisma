@@ -986,6 +986,7 @@ enum registros_horas_origem {
 
 enum registros_horas_status {
   Pendente
+  Autorizado
   Aprovado
   Corre__o @map("Correção")
   Recusado

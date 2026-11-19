@@ -108,7 +108,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const { prestadores: people, records, workspace } = useDemo();
   const prestadores = workspace ? people : prestadoresMock;
-  const pendentes = records.filter((item) => item.status === "Pendente");
+  const pendentes = records.filter((item) => item.status === "Pendente" || item.status === "Liberar para juiz");
   const pendingRows = workspace ? pendentes : registrosPendentes;
   const [registrationOpen, setRegistrationOpen] = useState(false);
   useEffect(() => {

@@ -33,6 +33,7 @@ const statements = [
   "ALTER TABLE documentos ADD COLUMN IF NOT EXISTS em_quarentena TINYINT(1) NOT NULL DEFAULT 0",
   "CREATE UNIQUE INDEX IF NOT EXISTS documentos_codigo_verificacao ON documentos (codigo_verificacao)",
   "ALTER TABLE email_envios ADD COLUMN IF NOT EXISTS corpo MEDIUMTEXT NULL",
+  "ALTER TABLE registros_horas MODIFY COLUMN status ENUM('Pendente','Autorizado','Aprovado','Correção','Recusado') NOT NULL DEFAULT 'Pendente'",
 ];
 
 for (const sql of statements) {

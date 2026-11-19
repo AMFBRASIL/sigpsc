@@ -39,7 +39,7 @@ export class OperationsService {
     const sums = await this.prisma.$queryRaw<Array<{ processo_id: number; aprovados: bigint; pendentes: bigint; ultimo: Date | null }>>`
       SELECT processo_id,
         COALESCE(SUM(CASE WHEN status = 'Aprovado' THEN minutos ELSE 0 END), 0) AS aprovados,
-        COALESCE(SUM(CASE WHEN status = 'Pendente' THEN minutos ELSE 0 END), 0) AS pendentes,
+        COALESCE(SUM(CASE WHEN status IN ('Pendente', 'Autorizado') THEN minutos ELSE 0 END), 0) AS pendentes,
         MAX(data) AS ultimo
       FROM registros_horas GROUP BY processo_id`;
     const byProcess = new Map(sums.map((row) => [Number(row.processo_id), row]));
@@ -197,7 +197,12 @@ export class OperationsService {
   async records(actor: Actor) {
     const rows = await this.prisma.registros_horas.findMany({
       where: actor.localId == null ? {} : { local_id: actor.localId },
-      include: { locais: true, processos: { include: { prestadores: true, usuarios_processos_supervisor_idTousuarios: true } } },
+      include: {
+        locais: true,
+        processos: { include: { prestadores: true, usuarios_processos_supervisor_idTousuarios: true } },
+        usuarios_registros_horas_registrado_por_usuarioTousuarios: true,
+        prestadores: true,
+      },
       orderBy: [{ data: "desc" }, { id: "desc" }],
       take: 300,
     });
@@ -301,13 +306,42 @@ export class OperationsService {
     await this.prisma.$transaction((tx) => unifyApprovalPackages(tx));
     const lotes = await this.prisma.validacoes_lote.findMany({
       where: { acao: "Aprovar", validacoes_lote_itens: { some: { registros_horas: { processos: { prestador_id: prestadorId } } } } },
-      include: { validacoes_lote_itens: { include: { registros_horas: { include: { processos: true } } } } },
+      include: {
+        usuarios: { select: { nome: true } },
+        validacoes_lote_itens: { include: { registros_horas: { include: { processos: true } } } },
+      },
       orderBy: { id: "desc" },
     });
-    return lotes.flatMap((lote) => {
-      const summary = packageSummary(lote.criado_em, approvedRows(lote.validacoes_lote_itens, prestadorId));
-      return summary ? [{ id: lote.id, ...summary }] : [];
-    });
+    const byDay = new Map<string, { id: number; closedAt: Date; fechadoPor: string; rows: ReturnType<typeof approvedRows> }>();
+    for (const lote of lotes) {
+      const rows = approvedRows(lote.validacoes_lote_itens, prestadorId);
+      if (!rows.length) continue;
+      const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(lote.criado_em);
+      const fechadoPor = lote.usuarios.nome || "—";
+      const current = byDay.get(day);
+      if (!current) {
+        byDay.set(day, { id: lote.id, closedAt: lote.criado_em, fechadoPor, rows: [...rows] });
+        continue;
+      }
+      const seen = new Set(current.rows.map((row) => row.id));
+      for (const row of rows) {
+        if (seen.has(row.id)) continue;
+        current.rows.push(row);
+        seen.add(row.id);
+      }
+      if (lote.criado_em.getTime() >= current.closedAt.getTime()) {
+        current.fechadoPor = fechadoPor;
+        current.closedAt = lote.criado_em;
+      }
+      if (lote.id < current.id) current.id = lote.id;
+    }
+    return [...byDay.values()]
+      .map((item) => {
+        const summary = packageSummary(item.closedAt, item.rows);
+        return summary ? { id: item.id, fechadoPor: item.fechadoPor, fechadoEmHora: formatPackageDateTime(item.closedAt), ...summary } : null;
+      })
+      .filter((item): item is { id: number; fechadoPor: string; fechadoEmHora: string } & NonNullable<ReturnType<typeof packageSummary>> => !!item)
+      .sort((a, b) => b.id - a.id);
   }
 
   async generatePdf(actor: Actor, input: { prestadorId: number; tipo: string; inicio?: string; fim?: string; loteId?: number }) {
@@ -321,8 +355,25 @@ export class OperationsService {
         where: { id: input.loteId, acao: "Aprovar" },
         include: { validacoes_lote_itens: { include: { registros_horas: { include: { processos: true } } } } },
       });
-      const rows = lote ? approvedRows(lote.validacoes_lote_itens, Number(person.id)) : [];
-      const summary = lote ? packageSummary(lote.criado_em, rows) : null;
+      if (!lote) throw new AppError(404, "Pacote não encontrado.", "NAO_ENCONTRADO");
+      const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(lote.criado_em);
+      const start = new Date(`${day}T03:00:00.000Z`);
+      const end = new Date(start.getTime() + 86_400_000);
+      const sameDay = await this.prisma.validacoes_lote.findMany({
+        where: {
+          acao: "Aprovar",
+          criado_em: { gte: start, lt: end },
+          validacoes_lote_itens: { some: { registros_horas: { processos: { prestador_id: Number(person.id) } } } },
+        },
+        include: { validacoes_lote_itens: { include: { registros_horas: { include: { processos: true } } } } },
+      });
+      const seen = new Set<number>();
+      const rows = sameDay.flatMap((item) => approvedRows(item.validacoes_lote_itens, Number(person.id))).filter((row) => {
+        if (seen.has(row.id)) return false;
+        seen.add(row.id);
+        return true;
+      });
+      const summary = packageSummary(lote.criado_em, rows);
       if (!summary) throw new AppError(404, "Este pacote não tem horas validadas deste prestador.", "NAO_ENCONTRADO");
       pacote = { fechadoEm: summary.fechadoEm, horas: summary.horasTexto, periodo: summary.periodo, dias: summary.dias, registros: summary.registros };
       filtered = rows.map(pdfRow);
@@ -422,7 +473,7 @@ export class OperationsService {
     const deadlines = prestadores.filter((item) => item.situacao === "Ativo" && item.prazoIso && item.prazoIso >= today && item.prazoIso <= addDays(today, 7));
     const approvedMinutes = prestadores.reduce((total, item) => total + item.minutosValidados, 0);
     const determinedMinutes = prestadores.reduce((total, item) => total + item.minutosDeterminados, 0);
-    const pending = records.filter((row) => row.status === "Pendente");
+    const pending = records.filter((row) => row.status === "Pendente" || row.status === "Liberar para juiz");
     const stale = prestadores.filter((item) => item.situacao === "Ativo" && (item.ultimoRegistro === "—" || item.ultimoRegistro.split("/").reverse().join("-") < addDays(today, -30))).length;
     const byMonth = new Map<string, number>();
     for (const row of records.filter((item) => item.status === "Aprovado")) {
@@ -444,10 +495,17 @@ export class OperationsService {
       documentos: documentos.map((item) => ({ id: String(item.id), nome: item.nome, tipo: labelTipo(item.tipo), data: formatBrDate(item.criado_em), status: labelDoc(item.status), tamanho: item.tamanho_bytes ? `${Math.max(1, Math.round(item.tamanho_bytes / 1024))} KB` : "—" })),
       escalas: week,
       notificacoes: [
-        ...deadlines.map((item) => ({ id: `prazo-${item.id}`, titulo: "Prazo judicial próximo", texto: `${item.nome} tem prazo em ${item.prazo}.`, tempo: item.prazo, tipo: "alerta" })),
-        ...(pending.length ? [{ id: "pendentes", titulo: `${pending.length} registros aguardando validação`, texto: "Há horas lançadas que ainda não foram validadas.", tempo: "agora", tipo: "info" }] : []),
-        ...(stale ? [{ id: "sem-registro", titulo: "Prestador sem registro recente", texto: `${stale} prestador(es) ativo(s) sem registro há mais de 30 dias.`, tempo: "hoje", tipo: "erro" }] : []),
-        ...stored.map((item) => ({ id: String(item.id), titulo: item.titulo, texto: item.texto, tempo: formatBrDate(item.criado_em), tipo: item.tipo })),
+        ...deadlines.map((item) => ({ id: `prazo-${item.id}`, titulo: "Prazo judicial próximo", texto: `${item.nome} tem prazo em ${item.prazo}.`, tempo: item.prazo, tipo: "alerta", link: `/prestadores/${item.id}` })),
+        ...(pending.length ? [{ id: "pendentes", titulo: `${pending.length} registros aguardando validação`, texto: "Há horas lançadas que ainda não foram validadas.", tempo: "agora", tipo: "info", link: "/validacao" }] : []),
+        ...(stale ? [{ id: "sem-registro", titulo: "Prestador sem registro recente", texto: `${stale} prestador(es) ativo(s) sem registro há mais de 30 dias.`, tempo: "hoje", tipo: "erro", link: "/prestadores" }] : []),
+        ...stored.map((item) => ({
+          id: String(item.id),
+          titulo: item.titulo,
+          texto: item.texto,
+          tempo: formatBrDate(item.criado_em),
+          tipo: item.tipo,
+          link: item.link || (item.prestador_id ? `/prestadores/${item.prestador_id}` : undefined),
+        })),
       ],
       dashboard: {
         kpis: [
@@ -585,6 +643,290 @@ export class OperationsService {
     return { buffer, mime: "text/csv; charset=utf-8", nome: "prestadores.csv" };
   }
 
+  async reportPreview(actor: Actor, input: ReportQuery) {
+    return this.buildReport(actor, input);
+  }
+
+  async exportReport(actor: Actor, input: ReportQuery & { formato: "csv" | "xlsx" }) {
+    const report = await this.buildReport(actor, input);
+    const body = report.rows.map((row) => report.columns.map((column) => (row as Record<string, string>)[column.key] ?? ""));
+    const buffer = input.formato === "csv"
+      ? Buffer.from(`\uFEFF${[report.columns.map((column) => column.label), ...body].map((line) => csvLine(line)).join("\n")}`, "utf8")
+      : await xlsx(report.columns.map((column) => column.label), body);
+    await this.prisma.exportacoes.create({
+      data: { conteudo: "Frequ_ncia", formato: input.formato === "csv" ? "CSV" : "Excel", usuario_id: actor.id },
+    });
+    await audit(this.prisma, { usuarioId: actor.id, acao: "EXPORTACAO", entidade: "exportacoes", descricao: `${input.tipo}:${input.formato}`, ip: actor.ip });
+    const ext = input.formato === "csv" ? "csv" : "xlsx";
+    return {
+      buffer,
+      mime: input.formato === "csv" ? "text/csv; charset=utf-8" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      nome: `${report.slug}.${ext}`,
+    };
+  }
+
+  async pdfReport(actor: Actor, input: ReportQuery) {
+    if (input.tipo === "cumprimento") {
+      const prestadorId = input.prestadorId ?? Number((await this.cards(actor, false)).find((row) => row.situacao === "Ativo")?.id ?? 0);
+      if (!prestadorId) throw new AppError(400, "Selecione o prestador para o cumprimento judicial.", "PRESTADOR");
+      return this.generatePdf(actor, {
+        prestadorId,
+        tipo: "Relatório de cumprimento",
+        inicio: input.inicio,
+        fim: input.fim,
+      });
+    }
+    const report = await this.buildReport(actor, input);
+    const buffer = await renderTablePdf({
+      title: report.title,
+      subtitle: report.subtitle,
+      kpis: report.kpis,
+      columns: report.columns.map((column) => column.label),
+      rows: report.rows.map((row) => report.columns.map((column) => String((row as Record<string, string>)[column.key] ?? ""))),
+      emissor: actor.nome,
+    });
+    await audit(this.prisma, { usuarioId: actor.id, acao: "EXPORTACAO", entidade: "relatorios", descricao: `pdf:${input.tipo}`, ip: actor.ip });
+    return { id: 0, buffer, nome: `${report.slug}.pdf` };
+  }
+
+  private async buildReport(actor: Actor, input: ReportQuery) {
+    const people = await this.cards(actor, false);
+    const records = await this.records(actor);
+    const inicio = input.inicio;
+    const fim = input.fim;
+    const local = input.local?.trim();
+    const inPeriod = (iso: string) => (!inicio || iso >= inicio) && (!fim || iso <= fim);
+    const matchLocal = (name: string) => !local || name === local;
+    const periodLabel = inicio || fim ? `${inicio ? brFromIso(inicio) : "…"} a ${fim ? brFromIso(fim) : "…"}` : "Todo o período";
+    const scopedRecords = records.filter((row) => inPeriod(row.iso) && matchLocal(row.local) && (!input.prestadorId || row.prestadorId === String(input.prestadorId)));
+
+    if (input.tipo === "frequencia" || input.tipo === "horas-periodo") {
+      const rows = scopedRecords.map((row) => ({
+        prestador: row.prestador,
+        data: row.data,
+        horario: `${row.entrada}–${row.saida}`,
+        horas: `${row.horas}h`,
+        atividade: row.atividade,
+        local: row.local,
+        status: row.status,
+      }));
+      const minutos = scopedRecords.reduce((total, row) => total + row.minutos, 0);
+      return {
+        tipo: input.tipo,
+        slug: input.tipo === "frequencia" ? "frequencia-individual" : "horas-por-periodo",
+        title: input.tipo === "frequencia" ? "Frequência individual" : "Horas por período",
+        subtitle: periodLabel,
+        kpis: [
+          { label: "Registros", value: String(rows.length) },
+          { label: "Total de horas", value: clockFromMinutes(minutos) },
+          { label: "Validados", value: String(scopedRecords.filter((row) => row.status === "Aprovado").length) },
+        ],
+        columns: [
+          { key: "prestador", label: "Prestador" },
+          { key: "data", label: "Data" },
+          { key: "horario", label: "Horário" },
+          { key: "horas", label: "Horas" },
+          { key: "atividade", label: "Atividade" },
+          { key: "local", label: "Local" },
+          { key: "status", label: "Status" },
+        ],
+        rows,
+      };
+    }
+
+    if (input.tipo === "prestadores-ativos") {
+      const ativos = people.filter((row) => row.situacao === "Ativo" && matchLocal(row.local));
+      return {
+        tipo: input.tipo,
+        slug: "prestadores-ativos",
+        title: "Prestadores ativos",
+        subtitle: local || "Todas as unidades",
+        kpis: [
+          { label: "Ativos", value: String(ativos.length) },
+          { label: "Horas validadas", value: `${Math.round(ativos.reduce((total, row) => total + row.horasCumpridas, 0))}h` },
+          { label: "Saldo restante", value: `${Math.round(ativos.reduce((total, row) => total + Math.max(0, row.horasTotais - row.horasCumpridas), 0))}h` },
+        ],
+        columns: [
+          { key: "nome", label: "Nome" },
+          { key: "processo", label: "Processo" },
+          { key: "local", label: "Local" },
+          { key: "supervisor", label: "Supervisor" },
+          { key: "cumpridas", label: "Horas validadas" },
+          { key: "totais", label: "Horas totais" },
+          { key: "saldo", label: "Saldo" },
+        ],
+        rows: ativos.map((row) => ({
+          nome: row.nome,
+          processo: row.processo,
+          local: row.local,
+          supervisor: row.supervisor,
+          cumpridas: `${row.horasCumpridas}h`,
+          totais: `${row.horasTotais}h`,
+          saldo: `${Math.max(0, row.horasTotais - row.horasCumpridas)}h`,
+        })),
+      };
+    }
+
+    if (input.tipo === "ausencias") {
+      const faltas = await this.prisma.escalas.findMany({
+        where: {
+          status: "Falta",
+          ...(inicio || fim ? { data: { ...(inicio ? { gte: dateForDb(inicio) } : {}), ...(fim ? { lte: dateForDb(fim) } : {}) } } : {}),
+          ...(actor.localId == null ? {} : { local_id: actor.localId }),
+        },
+        include: { locais: true, processos: { include: { prestadores: true } } },
+        orderBy: { data: "desc" },
+        take: 500,
+      });
+      const rows = faltas
+        .filter((row) => matchLocal(row.locais.nome) && (!input.prestadorId || row.processos.prestador_id === input.prestadorId))
+        .map((row) => ({
+          prestador: row.processos.prestadores.nome,
+          data: formatBrDate(row.data),
+          horario: `${formatHmSafe(row.hora_inicio)}–${formatHmSafe(row.hora_fim)}`,
+          local: row.locais.nome,
+          justificativa: row.justificativa || "Sem justificativa",
+        }));
+      return {
+        tipo: input.tipo,
+        slug: "ausencias",
+        title: "Ausências e justificativas",
+        subtitle: periodLabel,
+        kpis: [{ label: "Ausências", value: String(rows.length) }, { label: "Período", value: periodLabel }, { label: "Unidade", value: local || "Todas" }],
+        columns: [
+          { key: "prestador", label: "Prestador" },
+          { key: "data", label: "Data" },
+          { key: "horario", label: "Horário" },
+          { key: "local", label: "Local" },
+          { key: "justificativa", label: "Justificativa" },
+        ],
+        rows,
+      };
+    }
+
+    if (input.tipo === "produtividade-local") {
+      const byLocal = new Map<string, { horas: number; registros: number }>();
+      for (const row of scopedRecords.filter((item) => item.status === "Aprovado")) {
+        const current = byLocal.get(row.local) ?? { horas: 0, registros: 0 };
+        current.horas += row.horas;
+        current.registros += 1;
+        byLocal.set(row.local, current);
+      }
+      const rows = [...byLocal.entries()]
+        .sort((a, b) => b[1].horas - a[1].horas)
+        .map(([nome, stats]) => ({ local: nome, horas: `${Math.round(stats.horas * 10) / 10}h`, registros: String(stats.registros) }));
+      return {
+        tipo: input.tipo,
+        slug: "produtividade-por-local",
+        title: "Produtividade por local",
+        subtitle: periodLabel,
+        kpis: [
+          { label: "Locais", value: String(rows.length) },
+          { label: "Horas validadas", value: clockFromMinutes(scopedRecords.filter((row) => row.status === "Aprovado").reduce((total, row) => total + row.minutos, 0)) },
+          { label: "Registros", value: String(scopedRecords.filter((row) => row.status === "Aprovado").length) },
+        ],
+        columns: [
+          { key: "local", label: "Local" },
+          { key: "horas", label: "Horas" },
+          { key: "registros", label: "Registros" },
+        ],
+        rows,
+      };
+    }
+
+    if (input.tipo === "consolidado-mensal") {
+      const byMonth = new Map<string, { minutos: number; registros: number }>();
+      for (const row of scopedRecords.filter((item) => item.status === "Aprovado")) {
+        const key = row.iso.slice(0, 7);
+        const current = byMonth.get(key) ?? { minutos: 0, registros: 0 };
+        current.minutos += row.minutos;
+        current.registros += 1;
+        byMonth.set(key, current);
+      }
+      const rows = [...byMonth.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([mes, stats]) => ({ mes: monthName(mes), horas: clockFromMinutes(stats.minutos), registros: String(stats.registros) }));
+      return {
+        tipo: input.tipo,
+        slug: "consolidado-mensal",
+        title: "Consolidado mensal",
+        subtitle: periodLabel,
+        kpis: [
+          { label: "Meses", value: String(rows.length) },
+          { label: "Total", value: clockFromMinutes(scopedRecords.filter((row) => row.status === "Aprovado").reduce((total, row) => total + row.minutos, 0)) },
+          { label: "Registros", value: String(scopedRecords.filter((row) => row.status === "Aprovado").length) },
+        ],
+        columns: [
+          { key: "mes", label: "Mês" },
+          { key: "horas", label: "Horas" },
+          { key: "registros", label: "Registros" },
+        ],
+        rows,
+      };
+    }
+
+    if (input.tipo === "cumprimento") {
+      const person = input.prestadorId ? people.find((row) => row.id === String(input.prestadorId)) : people.find((row) => row.situacao === "Ativo") ?? people[0];
+      if (!person) throw new AppError(404, "Prestador não encontrado.", "NAO_ENCONTRADO");
+      const own = records.filter((row) => row.prestadorId === person.id && row.status === "Aprovado" && inPeriod(row.iso));
+      return {
+        tipo: input.tipo,
+        slug: "cumprimento-judicial",
+        title: "Cumprimento judicial",
+        subtitle: `${person.nome} · ${periodLabel}`,
+        kpis: [
+          { label: "Determinadas", value: `${person.horasTotais}h` },
+          { label: "Validadas", value: `${person.horasCumpridas}h` },
+          { label: "Conclusão", value: `${Math.round((person.horasCumpridas / Math.max(person.horasTotais, 1)) * 100)}%` },
+        ],
+        columns: [
+          { key: "data", label: "Data" },
+          { key: "horario", label: "Horário" },
+          { key: "horas", label: "Horas" },
+          { key: "atividade", label: "Atividade" },
+          { key: "local", label: "Local" },
+        ],
+        rows: own.map((row) => ({
+          data: row.data,
+          horario: `${row.entrada}–${row.saida}`,
+          horas: `${row.horas}h`,
+          atividade: row.atividade,
+          local: row.local,
+        })),
+        prestadorId: Number(person.id),
+        prestadorNome: person.nome,
+      };
+    }
+
+    const today = todayIso();
+    const stale = people.filter((row) => row.situacao === "Ativo" && matchLocal(row.local) && (row.ultimoRegistro === "—" || row.ultimoRegistro.split("/").reverse().join("-") < addDays(today, -30)));
+    return {
+      tipo: "sem-registros" as const,
+      slug: "sem-registros-recentes",
+      title: "Sem registros recentes",
+      subtitle: "Ativos sem atividade há mais de 30 dias",
+      kpis: [
+        { label: "Prestadores", value: String(stale.length) },
+        { label: "Unidade", value: local || "Todas" },
+        { label: "Critério", value: "> 30 dias" },
+      ],
+      columns: [
+        { key: "nome", label: "Nome" },
+        { key: "processo", label: "Processo" },
+        { key: "local", label: "Local" },
+        { key: "supervisor", label: "Supervisor" },
+        { key: "ultimo", label: "Último registro" },
+      ],
+      rows: stale.map((row) => ({
+        nome: row.nome,
+        processo: row.processo,
+        local: row.local,
+        supervisor: row.supervisor,
+        ultimo: row.ultimoRegistro,
+      })),
+    };
+  }
+
   private assertUnit(actor: Actor, localId: number | null | undefined) {
     if (actor.localId != null && localId !== actor.localId) throw new AppError(403, "Registro fora da sua unidade.", "FORA_DA_UNIDADE");
   }
@@ -669,8 +1011,11 @@ function weekBuckets(rows: Array<{ data: Date; hora_inicio: Date; hora_fim: Date
   return [...buckets.values()];
 }
 
-function approvedRows(items: Array<{ registros_horas: { status: string; processos: { prestador_id: number }; data: Date; entrada: Date; saida: Date; minutos: number; atividade_texto: string } }>, prestadorId: number) {
-  return items.map((item) => item.registros_horas).filter((row) => row.processos.prestador_id === prestadorId && statusLabel(row.status) === "Aprovado").sort((a, b) => a.data.getTime() - b.data.getTime() || a.entrada.getTime() - b.entrada.getTime());
+function approvedRows(items: Array<{ registro_id: number; registros_horas: { status: string; processos: { prestador_id: number }; data: Date; entrada: Date; saida: Date; minutos: number; atividade_texto: string } }>, prestadorId: number) {
+  return items
+    .filter((item) => item.registros_horas.processos.prestador_id === prestadorId && statusLabel(item.registros_horas.status) === "Aprovado")
+    .map((item) => ({ id: item.registro_id, ...item.registros_horas }))
+    .sort((a, b) => a.data.getTime() - b.data.getTime() || a.entrada.getTime() - b.entrada.getTime());
 }
 function packageSummary(closedAt: Date, rows: Array<{ data: Date; minutos: number }>) {
   if (!rows.length) return null;
@@ -680,6 +1025,16 @@ function packageSummary(closedAt: Date, rows: Array<{ data: Date; minutos: numbe
   const first = brFromIso(unique[0] ?? "");
   const last = brFromIso(unique[unique.length - 1] ?? "");
   return { fechadoEm: formatBrDate(closedAt), periodo: first === last ? first : `${first} a ${last}`, dias: unique.length, registros: rows.length, minutos, horas: hoursFromMinutes(minutos), horasTexto: clockFromMinutes(minutos) };
+}
+function formatPackageDateTime(value: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(value);
 }
 function brFromIso(iso: string) {
   const [year, month, day] = iso.split("-");
@@ -745,6 +1100,84 @@ async function xlsx(header: string[], rows: unknown[][]): Promise<Buffer> {
   rows.forEach((row) => sheet.addRow(row.map((cell) => safeSpreadsheet(cell))));
   const data = await book.xlsx.writeBuffer();
   return Buffer.from(data);
+}
+
+export type ReportTipo =
+  | "frequencia"
+  | "horas-periodo"
+  | "prestadores-ativos"
+  | "ausencias"
+  | "produtividade-local"
+  | "consolidado-mensal"
+  | "cumprimento"
+  | "sem-registros";
+
+type ReportQuery = {
+  tipo: ReportTipo;
+  inicio?: string;
+  fim?: string;
+  local?: string;
+  prestadorId?: number;
+};
+
+function renderTablePdf(input: {
+  title: string;
+  subtitle: string;
+  kpis: { label: string; value: string }[];
+  columns: string[];
+  rows: string[][];
+  emissor: string;
+}): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 40, bufferPages: true });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+    doc.fontSize(11).fillColor("#1e3a5f").text("SIGPSC — Prestação de Serviços à Comunidade");
+    doc.moveDown(0.3).fontSize(16).fillColor("#000").text(input.title);
+    doc.fontSize(10).fillColor("#555").text(input.subtitle);
+    doc.moveDown(0.6).fillColor("#000").fontSize(10);
+    for (const kpi of input.kpis) doc.text(`${kpi.label}: ${kpi.value}`);
+    doc.moveDown(0.8).fontSize(9);
+    const width = 515;
+    const col = Math.max(1, input.columns.length);
+    const colWidth = width / col;
+    let y = doc.y;
+    doc.rect(40, y, width, 18).fill("#eef2f7");
+    doc.fillColor("#123").font("Helvetica-Bold");
+    input.columns.forEach((label, index) => {
+      doc.text(label, 44 + index * colWidth, y + 4, { width: colWidth - 8, lineBreak: false });
+    });
+    y += 20;
+    doc.font("Helvetica").fillColor("#000");
+    const lines = input.rows.slice(0, 40);
+    for (const row of lines) {
+      if (y > 760) {
+        doc.addPage();
+        y = 40;
+      }
+      row.forEach((cell, index) => {
+        doc.text(String(cell).slice(0, 42), 44 + index * colWidth, y, { width: colWidth - 8, lineBreak: false });
+      });
+      y += 16;
+    }
+    if (!lines.length) {
+      doc.text("Nenhum registro encontrado para os filtros selecionados.", 44, y);
+      y += 16;
+    }
+    if (input.rows.length > lines.length) {
+      doc.text(`… e mais ${input.rows.length - lines.length} registro(s).`, 44, y + 4);
+      y += 16;
+    }
+    doc.fontSize(9).fillColor("#555").text(`Emitido por ${input.emissor} em ${formatBrDate(new Date())}.`, 40, Math.max(y + 18, 780), { lineBreak: false });
+    const range = doc.bufferedPageRange();
+    for (let index = 0; index < range.count; index += 1) {
+      doc.switchToPage(range.start + index);
+      doc.fontSize(8).fillColor("#777").text(`${index + 1}/${range.count}`, 520, 810, { lineBreak: false });
+    }
+    doc.end();
+  });
 }
 
 export function verificationHtml(data: { autentico: boolean; numero?: string; tipo?: string; emitidoEm?: string } | null): string {

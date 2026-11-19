@@ -46,9 +46,9 @@ export const escalas = [
   { dia: "Sáb", data: "21/11", itens: [{ prestador: "Ricardo G. Neto", horario: "08:00–12:00", local: "Biblioteca" }] },
 ];
 export const notificacoes = [
-  { id: "n1", titulo: "Prazo de relatório se aproxima", texto: "Relatório de Juliana Martins deve ser enviado ao fórum até 25/11.", tempo: "há 2 h", tipo: "alerta" },
-  { id: "n2", titulo: "5 registros aguardando validação", texto: "Supervisores enviaram novas horas para validação.", tempo: "há 4 h", tipo: "info" },
-  { id: "n3", titulo: "Prestador sem registro recente", texto: "Fernanda Costa Melo sem registros há mais de 30 dias.", tempo: "ontem", tipo: "erro" },
-  { id: "n4", titulo: "Cumprimento quase concluído", texto: "Ricardo Gomes Neto atingiu 91% das horas determinadas.", tempo: "ontem", tipo: "sucesso" },
+  { id: "n1", titulo: "Prazo de relatório se aproxima", texto: "Relatório de Juliana Martins deve ser enviado ao fórum até 25/11.", tempo: "há 2 h", tipo: "alerta", link: "/prestadores/8" },
+  { id: "n2", titulo: "5 registros aguardando validação", texto: "Supervisores enviaram novas horas para validação.", tempo: "há 4 h", tipo: "info", link: "/validacao" },
+  { id: "n3", titulo: "Prestador sem registro recente", texto: "Fernanda Costa Melo sem registros há mais de 30 dias.", tempo: "ontem", tipo: "erro", link: "/prestadores/4" },
+  { id: "n4", titulo: "Cumprimento quase concluído", texto: "Ricardo Gomes Neto atingiu 91% das horas determinadas.", tempo: "ontem", tipo: "sucesso", link: "/prestadores/5" },
 ];
 export const locais = ["Escola Municipal Dom Pedro", "UBS Vila Nova", "Parque Ecológico", "Centro de Assistência Social", "Biblioteca Pública"];
