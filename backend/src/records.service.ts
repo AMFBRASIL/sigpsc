@@ -321,7 +321,7 @@ export class RecordsService {
     const sums = await this.sums(tx, processo.id, excludeId);
     const determined = Math.round(Number(processo.horas_totais) * 60);
     if (sums.aprovados + sums.pendentes + minutos > determined) {
-      throw new AppError(409, "O lançamento ultrapassa as horas determinadas.", "LIMITE");
+      throw new AppError(409, "O lançamento não foi adicionado: ultrapassa as horas determinadas do processo.", "LIMITE");
     }
     const weekly = processo.horas_semanais_max == null ? null : Math.round(Number(processo.horas_semanais_max) * 60);
     if (weekly != null) {
@@ -333,7 +333,10 @@ export class RecordsService {
           AND data BETWEEN ${range.start} AND ${range.end}
           AND id <> ${excludeId}`;
       const used = Number(rows[0]?.total ?? 0);
-      if (used + minutos > weekly) throw new AppError(409, "O lançamento ultrapassa o limite semanal.", "LIMITE_SEMANAL");
+      if (used + minutos > weekly) {
+        const limitHours = hoursFromMinutes(weekly);
+        throw new AppError(409, `O lançamento não foi adicionado: este prestador já atingiu o limite semanal de ${limitHours}h.`, "LIMITE_SEMANAL");
+      }
     }
   }
 
