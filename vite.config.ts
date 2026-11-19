@@ -17,6 +17,7 @@ export default defineConfig({
   },
   vite: {
     server: {
+      allowedHosts: ["sigpsc.mautone.com.br"],
       proxy: {
         "/api": { target: "http://127.0.0.1:3340", changeOrigin: true },
         "/verificar": { target: "http://127.0.0.1:3340", changeOrigin: true },
