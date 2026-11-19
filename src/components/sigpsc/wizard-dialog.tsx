@@ -11,7 +11,7 @@ const today = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric"
 
 export function WizardDialog({ open, onOpenChange, badge, headline, steps, step, setStep, canContinue = true, onFinish, finishLabel = "Cadastrar", children }: {
   open: boolean; onOpenChange: (o: boolean) => void; badge: string; headline: string; steps: WizardStep[]; step: number; setStep: (n: number) => void;
-  canContinue?: boolean; onFinish: () => void; finishLabel?: string; children: ReactNode;
+  canContinue?: boolean | undefined; onFinish: () => void; finishLabel?: string; children: ReactNode;
 }) {
   const last = step === steps.length - 1;
   const current = steps[step]!;
@@ -60,7 +60,7 @@ export function FieldLabel({ children, icon: Icon }: { children: ReactNode; icon
   return <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{Icon && <Icon className="size-3.5" />}{children}</p>;
 }
 
-export function ChoiceCard({ selected, onClick, icon: Icon, title, hint, color }: { selected: boolean; onClick: () => void; icon: LucideIcon; title: string; hint: string; color?: string }) {
+export function ChoiceCard({ selected, onClick, icon: Icon, title, hint, color }: { selected: boolean; onClick: () => void; icon: LucideIcon; title: string; hint: string; color?: string | undefined }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={selected} className={cn("flex w-full items-center gap-3 rounded-xl border bg-card p-4 text-left shadow-card transition-all hover:border-ring", selected && "border-primary ring-2 ring-ring/40")}>
       <span className={cn("grid size-10 shrink-0 place-items-center rounded-lg text-primary-foreground", color ?? "bg-primary")}><Icon className="size-5" /></span>
